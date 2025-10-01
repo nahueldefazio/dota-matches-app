@@ -11,6 +11,7 @@ export default function DotaMatches() {
   const [steamId, setSteamId] = useState(DEFAULT_STEAM32_ID.toString());
   const [steam64Id, setSteam64Id] = useState("");
   const [error, setError] = useState("");
+  const [converting, setConverting] = useState(false);
 
   // Cargar partidas
   useEffect(() => {
@@ -120,10 +121,21 @@ export default function DotaMatches() {
     
     // Convertir automáticamente a Steam32
     if (steam64.trim() !== "") {
-      const steam32 = convertSteam64ToSteam32(steam64);
-      if (steam32) {
-        setSteamId(steam32);
-      }
+      setConverting(true);
+      setTimeout(() => {
+        try {
+          const steam32 = convertSteam64ToSteam32(steam64);
+          if (steam32 && steam32 !== "0") {
+            setSteamId(steam32);
+          }
+        } catch (error) {
+          console.error("Error converting Steam64:", error);
+        }
+        setConverting(false);
+      }, 300); // Pequeño delay para mostrar el spinner
+    } else {
+      setSteamId("");
+      setConverting(false);
     }
   };
 
@@ -165,16 +177,23 @@ export default function DotaMatches() {
               <label htmlFor="steamId" className="block text-sm font-medium text-gray-700 mb-2">
                 Steam ID (32-bit) - Para la API
               </label>
-              <input
-                type="text"
-                id="steamId"
-                value={steamId}
-                onChange={handleSteamIdChange}
-                placeholder="Ej: 72810287"
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              />
+              <div className="relative">
+                <input
+                  type="text"
+                  id="steamId"
+                  value={steamId}
+                  onChange={handleSteamIdChange}
+                  placeholder="Ej: 72810287"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+                {converting && (
+                  <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                    <div className="animate-spin rounded-full h-4 w-4 border-2 border-blue-500 border-t-transparent"></div>
+                  </div>
+                )}
+              </div>
               <p className="text-xs text-gray-500 mt-1">
-                Se genera automáticamente desde Steam64
+                {converting ? "Convirtiendo..." : "Se genera automáticamente desde Steam64"}
               </p>
             </div>
           </div>
@@ -182,9 +201,23 @@ export default function DotaMatches() {
           <div className="flex justify-center">
             <button
               type="submit"
-              className="px-8 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors"
+              disabled={loading}
+              className={`px-8 py-2 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors flex items-center gap-2 ${
+                loading 
+                  ? 'bg-gray-400 cursor-not-allowed' 
+                  : 'bg-blue-500 hover:bg-blue-600 text-white'
+              }`}
             >
-              🔍 Buscar Partidas
+              {loading ? (
+                <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                  Buscando...
+                </>
+              ) : (
+                <>
+                  🔍 Buscar Partidas
+                </>
+              )}
             </button>
           </div>
         </form>
@@ -271,9 +304,17 @@ export default function DotaMatches() {
       )}
 
       {loading ? (
-        <div className="text-center py-8">
-          <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
-          <p className="mt-2 text-gray-600">Cargando partidas...</p>
+        <div className="text-center py-12">
+          <div className="inline-flex flex-col items-center space-y-4">
+            <div className="relative">
+              <div className="animate-spin rounded-full h-12 w-12 border-4 border-blue-200"></div>
+              <div className="animate-spin rounded-full h-12 w-12 border-4 border-blue-500 border-t-transparent absolute top-0 left-0"></div>
+            </div>
+            <div className="text-center">
+              <p className="text-lg font-medium text-gray-700">Cargando partidas...</p>
+              <p className="text-sm text-gray-500 mt-1">Analizando datos del jugador</p>
+            </div>
+          </div>
         </div>
       ) : error ? (
         <div className="text-center py-8">
