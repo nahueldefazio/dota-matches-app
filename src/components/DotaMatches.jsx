@@ -9,6 +9,7 @@ export default function DotaMatches() {
   const [filter, setFilter] = useState("all"); // all, solo, party
   const [loading, setLoading] = useState(true);
   const [steamId, setSteamId] = useState(DEFAULT_STEAM32_ID.toString());
+  const [steam64Id, setSteam64Id] = useState("");
   const [error, setError] = useState("");
 
   // Cargar partidas
@@ -99,8 +100,31 @@ export default function DotaMatches() {
 
   const currentStats = calculateStats(filteredMatches);
 
+  // Función para convertir Steam64 a Steam32
+  const convertSteam64ToSteam32 = (steam64) => {
+    if (!steam64 || steam64.trim() === "") return "";
+    
+    const steam64Num = BigInt(steam64);
+    // Steam32 = Steam64 - 76561197960265728
+    const steam32 = steam64Num - BigInt("76561197960265728");
+    return steam32.toString();
+  };
+
   const handleSteamIdChange = (e) => {
     setSteamId(e.target.value);
+  };
+
+  const handleSteam64IdChange = (e) => {
+    const steam64 = e.target.value;
+    setSteam64Id(steam64);
+    
+    // Convertir automáticamente a Steam32
+    if (steam64.trim() !== "") {
+      const steam32 = convertSteam64ToSteam32(steam64);
+      if (steam32) {
+        setSteamId(steam32);
+      }
+    }
   };
 
   const handleSubmit = (e) => {
@@ -116,29 +140,53 @@ export default function DotaMatches() {
 
       {/* Input para Steam ID */}
       <div className="mb-6 bg-white p-4 rounded-lg shadow-md">
-        <form onSubmit={handleSubmit} className="flex gap-4 items-end">
-          <div className="flex-1">
-            <label htmlFor="steamId" className="block text-sm font-medium text-gray-700 mb-2">
-              Steam ID (32-bit)
-            </label>
-            <input
-              type="text"
-              id="steamId"
-              value={steamId}
-              onChange={handleSteamIdChange}
-              placeholder="Ej: 72810287"
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            />
-            <p className="text-xs text-gray-500 mt-1">
-              Ingresa el Steam ID de 32-bit del jugador que quieres analizar
-            </p>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Steam64 Input */}
+            <div>
+              <label htmlFor="steam64Id" className="block text-sm font-medium text-gray-700 mb-2">
+                Steam ID (64-bit) - Fácil de encontrar
+              </label>
+              <input
+                type="text"
+                id="steam64Id"
+                value={steam64Id}
+                onChange={handleSteam64IdChange}
+                placeholder="Ej: 76561198045611095"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+              />
+              <p className="text-xs text-gray-500 mt-1">
+                Tu Steam ID completo (se convierte automáticamente)
+              </p>
+            </div>
+
+            {/* Steam32 Input */}
+            <div>
+              <label htmlFor="steamId" className="block text-sm font-medium text-gray-700 mb-2">
+                Steam ID (32-bit) - Para la API
+              </label>
+              <input
+                type="text"
+                id="steamId"
+                value={steamId}
+                onChange={handleSteamIdChange}
+                placeholder="Ej: 72810287"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+              <p className="text-xs text-gray-500 mt-1">
+                Se genera automáticamente desde Steam64
+              </p>
+            </div>
           </div>
-          <button
-            type="submit"
-            className="px-6 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors"
-          >
-            Buscar
-          </button>
+
+          <div className="flex justify-center">
+            <button
+              type="submit"
+              className="px-8 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors"
+            >
+              🔍 Buscar Partidas
+            </button>
+          </div>
         </form>
         
         {error && (
@@ -146,6 +194,16 @@ export default function DotaMatches() {
             {error}
           </div>
         )}
+
+        {/* Información sobre cómo encontrar Steam ID */}
+        <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-md">
+          <h3 className="text-sm font-medium text-blue-800 mb-2">💡 ¿Cómo encontrar tu Steam ID?</h3>
+          <div className="text-xs text-blue-700 space-y-1">
+            <p><strong>Opción 1:</strong> Ve a tu perfil de Steam → URL del perfil → copia los números al final</p>
+            <p><strong>Opción 2:</strong> Usa <a href="https://steamid.io" target="_blank" rel="noopener noreferrer" className="underline">steamid.io</a> y pega tu URL de Steam</p>
+            <p><strong>Opción 3:</strong> En Dota 2, ve a Configuración → Cuenta → tu Steam ID está ahí</p>
+          </div>
+        </div>
       </div>
 
       <div className="mb-4 flex gap-2">
