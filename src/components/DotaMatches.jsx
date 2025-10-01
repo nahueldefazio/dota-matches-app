@@ -7,18 +7,18 @@ export default function DotaMatches() {
   const [matches, setMatches] = useState([]);
   const [heroes, setHeroes] = useState({});
   const [filter, setFilter] = useState("all"); // all, solo, party
-  const [loading, setLoading] = useState(true);
-  const [steamId, setSteamId] = useState(DEFAULT_STEAM32_ID.toString());
+  const [loading, setLoading] = useState(false);
+  const [steamId, setSteamId] = useState("");
   const [steam64Id, setSteam64Id] = useState("");
   const [error, setError] = useState("");
   const [converting, setConverting] = useState(false);
 
-  // Cargar partidas
+  // Cargar partidas solo cuando hay un Steam ID
   useEffect(() => {
     async function fetchMatches() {
       if (!steamId || steamId.trim() === "") {
-        setError("Por favor ingresa un Steam ID válido");
-        setLoading(false);
+        setMatches([]);
+        setError("");
         return;
       }
 
@@ -239,35 +239,38 @@ export default function DotaMatches() {
         </div>
       </div>
 
-      <div className="mb-4 flex gap-2">
-        <button
-          onClick={() => setFilter("all")}
-          className={`px-4 py-2 rounded ${
-            filter === "all" ? "bg-blue-500 text-white" : "bg-gray-200"
-          }`}
-        >
-          All
-        </button>
-        <button
-          onClick={() => setFilter("solo")}
-          className={`px-4 py-2 rounded ${
-            filter === "solo" ? "bg-blue-500 text-white" : "bg-gray-200"
-          }`}
-        >
-          Solo Queue
-        </button>
-        <button
-          onClick={() => setFilter("party")}
-          className={`px-4 py-2 rounded ${
-            filter === "party" ? "bg-blue-500 text-white" : "bg-gray-200"
-          }`}
-        >
-          Party
-        </button>
-      </div>
+      {/* Filtros solo se muestran cuando hay datos */}
+      {steamId && matches.length > 0 && (
+        <div className="mb-4 flex gap-2">
+          <button
+            onClick={() => setFilter("all")}
+            className={`px-4 py-2 rounded ${
+              filter === "all" ? "bg-blue-500 text-white" : "bg-gray-200"
+            }`}
+          >
+            All
+          </button>
+          <button
+            onClick={() => setFilter("solo")}
+            className={`px-4 py-2 rounded ${
+              filter === "solo" ? "bg-blue-500 text-white" : "bg-gray-200"
+            }`}
+          >
+            Solo Queue
+          </button>
+          <button
+            onClick={() => setFilter("party")}
+            className={`px-4 py-2 rounded ${
+              filter === "party" ? "bg-blue-500 text-white" : "bg-gray-200"
+            }`}
+          >
+            Party
+          </button>
+        </div>
+      )}
 
       {/* Estadísticas por filtro */}
-      {!loading && !error && (
+      {!loading && !error && steamId && matches.length > 0 && (
         <div className="mb-6 bg-white p-4 rounded-lg shadow-md">
           <h2 className="text-lg font-semibold mb-3">
             Estadísticas - Steam ID: {steamId} - {filter === "all" ? "Todas las partidas" : filter === "solo" ? "Solo Queue" : "Party"}
@@ -303,7 +306,22 @@ export default function DotaMatches() {
         </div>
       )}
 
-      {loading ? (
+      {!steamId && !loading && !error ? (
+        <div className="text-center py-12">
+          <div className="inline-flex flex-col items-center space-y-4">
+            <div className="text-6xl mb-4">🎮</div>
+            <div className="text-center">
+              <h3 className="text-xl font-semibold text-gray-700 mb-2">¡Bienvenido a Dota Matches!</h3>
+              <p className="text-gray-600 mb-4">Ingresa un Steam ID para comenzar a analizar partidas</p>
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 max-w-md mx-auto">
+                <p className="text-sm text-blue-800">
+                  <strong>💡 Tip:</strong> Puedes usar tu Steam ID completo (64-bit) o el formato corto (32-bit)
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : loading ? (
         <div className="text-center py-12">
           <div className="inline-flex flex-col items-center space-y-4">
             <div className="relative">
