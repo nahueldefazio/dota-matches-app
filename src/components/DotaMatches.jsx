@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from "react";
 
-const STEAM32_ID = 72810287;
-const API_URL = `https://api.opendota.com/api/players/${STEAM32_ID}/matches?lobby_type=7`;
+const DEFAULT_STEAM32_ID = 72810287;
 const HEROES_API = "https://api.opendota.com/api/heroes";
 
 export default function DotaMatches() {
@@ -9,22 +8,46 @@ export default function DotaMatches() {
   const [heroes, setHeroes] = useState({});
   const [filter, setFilter] = useState("all"); // all, solo, party
   const [loading, setLoading] = useState(true);
+  const [steamId, setSteamId] = useState(DEFAULT_STEAM32_ID.toString());
+  const [error, setError] = useState("");
 
   // Cargar partidas
   useEffect(() => {
     async function fetchMatches() {
+      if (!steamId || steamId.trim() === "") {
+        setError("Por favor ingresa un Steam ID válido");
+        setLoading(false);
+        return;
+      }
+
+      setLoading(true);
+      setError("");
+      
       try {
+        const API_URL = `https://api.opendota.com/api/players/${steamId}/matches?lobby_type=7`;
         const res = await fetch(API_URL);
+        
+        if (!res.ok) {
+          throw new Error(`Error ${res.status}: ${res.statusText}`);
+        }
+        
         const data = await res.json();
+        
+        if (data.error) {
+          throw new Error(data.error);
+        }
+        
         setMatches(data);
       } catch (err) {
         console.error("Error fetching matches:", err);
+        setError(`Error al cargar partidas: ${err.message}`);
+        setMatches([]);
       } finally {
         setLoading(false);
       }
     }
     fetchMatches();
-  }, []);
+  }, [steamId]);
 
   // Cargar héroes para convertir hero_id → nombre
   useEffect(() => {
@@ -76,9 +99,54 @@ export default function DotaMatches() {
 
   const currentStats = calculateStats(filteredMatches);
 
+  const handleSteamIdChange = (e) => {
+    setSteamId(e.target.value);
+  };
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    if (steamId.trim() !== "") {
+      setSteamId(steamId.trim());
+    }
+  };
+
   return (
     <div className="p-6 max-w-5xl mx-auto">
       <h1 className="text-2xl font-bold mb-4">Dota 2 Ranked Matches</h1>
+
+      {/* Input para Steam ID */}
+      <div className="mb-6 bg-white p-4 rounded-lg shadow-md">
+        <form onSubmit={handleSubmit} className="flex gap-4 items-end">
+          <div className="flex-1">
+            <label htmlFor="steamId" className="block text-sm font-medium text-gray-700 mb-2">
+              Steam ID (32-bit)
+            </label>
+            <input
+              type="text"
+              id="steamId"
+              value={steamId}
+              onChange={handleSteamIdChange}
+              placeholder="Ej: 72810287"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            />
+            <p className="text-xs text-gray-500 mt-1">
+              Ingresa el Steam ID de 32-bit del jugador que quieres analizar
+            </p>
+          </div>
+          <button
+            type="submit"
+            className="px-6 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors"
+          >
+            Buscar
+          </button>
+        </form>
+        
+        {error && (
+          <div className="mt-3 p-3 bg-red-100 border border-red-400 text-red-700 rounded-md">
+            {error}
+          </div>
+        )}
+      </div>
 
       <div className="mb-4 flex gap-2">
         <button
@@ -108,8 +176,11 @@ export default function DotaMatches() {
       </div>
 
       {/* Estadísticas por filtro */}
-      <div className="mb-6 bg-white p-4 rounded-lg shadow-md">
-        <h2 className="text-lg font-semibold mb-3">Estadísticas - {filter === "all" ? "Todas las partidas" : filter === "solo" ? "Solo Queue" : "Party"}</h2>
+      {!loading && !error && (
+        <div className="mb-6 bg-white p-4 rounded-lg shadow-md">
+          <h2 className="text-lg font-semibold mb-3">
+            Estadísticas - Steam ID: {steamId} - {filter === "all" ? "Todas las partidas" : filter === "solo" ? "Solo Queue" : "Party"}
+          </h2>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <div className="text-center">
             <div className="text-2xl font-bold text-blue-600">{currentStats.total}</div>
@@ -138,10 +209,19 @@ export default function DotaMatches() {
             </div>
           </div>
         )}
-      </div>
+        </div>
+      )}
 
       {loading ? (
-        <p>Loading matches...</p>
+        <div className="text-center py-8">
+          <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+          <p className="mt-2 text-gray-600">Cargando partidas...</p>
+        </div>
+      ) : error ? (
+        <div className="text-center py-8">
+          <div className="text-red-500 text-lg mb-2">⚠️</div>
+          <p className="text-gray-600">No se pudieron cargar las partidas</p>
+        </div>
       ) : (
         <table className="w-full border-collapse">
           <thead>
