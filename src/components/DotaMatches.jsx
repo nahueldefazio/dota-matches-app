@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import SteamAuth from "./SteamAuth";
 
 const DEFAULT_STEAM32_ID = 72810287;
 const HEROES_API = "https://api.opendota.com/api/heroes";
@@ -12,6 +13,7 @@ export default function DotaMatches() {
   const [steam64Id, setSteam64Id] = useState("");
   const [error, setError] = useState("");
   const [converting, setConverting] = useState(false);
+  const [authenticatedUser, setAuthenticatedUser] = useState(null);
 
   // Cargar partidas solo cuando hay un Steam ID
   useEffect(() => {
@@ -68,6 +70,54 @@ export default function DotaMatches() {
     }
     fetchHeroes();
   }, []);
+
+  // Efecto para manejar la autenticación de Steam
+  useEffect(() => {
+    // Verificar si hay un callback de Steam en la URL
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.has('openid.claimed_id') && urlParams.has('openid.identity')) {
+      // Procesar el callback de Steam
+      handleSteamCallback();
+    }
+  }, []);
+
+  // Función para manejar el callback de Steam
+  const handleSteamCallback = async () => {
+    try {
+      setLoading(true);
+      
+      const response = await fetch('/api/auth/steam/callback', {
+        method: 'GET',
+        credentials: 'include'
+      });
+
+      if (!response.ok) {
+        throw new Error(`Error ${response.status}: ${response.statusText}`);
+      }
+
+      const userData = await response.json();
+      
+      if (userData.steamID) {
+        setAuthenticatedUser(userData);
+        
+        // Convertir SteamID64 a SteamID32 automáticamente
+        const steam32Id = convertSteam64ToSteam32(userData.steamID);
+        if (steam32Id && steam32Id !== "0") {
+          setSteamId(steam32Id);
+          setSteam64Id(userData.steamID);
+        }
+        
+        // Limpiar la URL
+        window.history.replaceState({}, document.title, window.location.pathname);
+      }
+      
+    } catch (err) {
+      console.error('Error procesando callback de Steam:', err);
+      setError(`Error de autenticación: ${err.message}`);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // Función para obtener el party_size con fallback
   const getPartySize = (match) => {
@@ -173,9 +223,54 @@ export default function DotaMatches() {
     }
   };
 
+  // Función para iniciar sesión con Steam
+  const loginWithSteam = () => {
+    window.location.href = '/api/auth/steam';
+  };
+
+  // Función para cerrar sesión
+  const logout = () => {
+    setAuthenticatedUser(null);
+    setSteamId("");
+    setSteam64Id("");
+    setMatches([]);
+    setError("");
+  };
+
   return (
     <div className="p-6 max-w-5xl mx-auto">
       <h1 className="text-2xl font-bold mb-4">Dota 2 Ranked Matches</h1>
+
+      {/* Componente de autenticación con Steam */}
+      <SteamAuth />
+
+      {/* Mostrar información del usuario autenticado */}
+      {authenticatedUser && (
+        <div className="mb-6 bg-gradient-to-r from-green-50 to-blue-50 border border-green-200 rounded-lg p-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-3">
+              <img 
+                src={authenticatedUser.avatar} 
+                alt={`Avatar de ${authenticatedUser.name}`}
+                className="w-10 h-10 rounded-full border-2 border-green-300"
+                onError={(e) => {
+                  e.target.src = 'https://via.placeholder.com/40x40?text=Avatar';
+                }}
+              />
+              <div>
+                <p className="font-medium text-gray-800">¡Hola, {authenticatedUser.name}!</p>
+                <p className="text-sm text-gray-600">Steam ID cargado automáticamente</p>
+              </div>
+            </div>
+            <button
+              onClick={logout}
+              className="text-sm text-gray-500 hover:text-gray-700 underline"
+            >
+              Cerrar sesión
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Input para Steam ID */}
       <div className="mb-6 bg-white p-4 rounded-lg shadow-md">
@@ -225,7 +320,7 @@ export default function DotaMatches() {
             </div>
           </div>
 
-          <div className="flex justify-center">
+          <div className="flex justify-center gap-4">
             <button
               type="submit"
               disabled={loading}
@@ -246,6 +341,16 @@ export default function DotaMatches() {
                 </>
               )}
             </button>
+            
+            {!authenticatedUser && (
+              <button
+                type="button"
+                onClick={loginWithSteam}
+                className="px-6 py-2 bg-green-600 hover:bg-green-700 text-white rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition-colors flex items-center gap-2"
+              >
+                🎮 Iniciar sesión con Steam
+              </button>
+            )}
           </div>
         </form>
         
