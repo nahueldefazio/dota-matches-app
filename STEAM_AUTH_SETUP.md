@@ -214,3 +214,4 @@ Si encuentras algún problema o tienes sugerencias, por favor:
 4. Proporciona pasos para reproducir el problema
 
 ¡Disfruta analizando tus partidas de Dota 2! 🎮
+
