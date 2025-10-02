@@ -69,9 +69,36 @@ export default function DotaMatches() {
     fetchHeroes();
   }, []);
 
+  // Función para obtener el party_size con fallback
+  const getPartySize = (match) => {
+    // Si party_size existe y es válido, lo usamos
+    if (match.party_size !== undefined && match.party_size !== null && match.party_size > 0) {
+      return match.party_size;
+    }
+    
+    // Fallback: intentar inferir desde otros campos
+    // Si hay party_id, probablemente sea party
+    if (match.party_id !== undefined && match.party_id !== null && match.party_id !== 0) {
+      // Si hay party_id pero no party_size, asumimos que es un party
+      // En la mayoría de casos, party_id > 0 indica que no es solo
+      return 2; // Asumimos party de al menos 2
+    }
+    
+    // Verificar si hay otros indicadores de party
+    // Por ejemplo, si hay lobby_type específico para party
+    if (match.lobby_type === 7) { // Ranked matchmaking
+      // En ranked, si no hay party_id, probablemente sea solo
+      return 1;
+    }
+    
+    // Si no hay información suficiente, asumimos que es solo (1)
+    return 1;
+  };
+
   const filteredMatches = matches.filter((m) => {
-    if (filter === "solo") return m.party_size === 1;
-    if (filter === "party") return m.party_size > 1;
+    const partySize = getPartySize(m);
+    if (filter === "solo") return partySize === 1;
+    if (filter === "party") return partySize > 1;
     return true;
   });
 
@@ -241,31 +268,41 @@ export default function DotaMatches() {
 
       {/* Filtros solo se muestran cuando hay datos */}
       {steamId && matches.length > 0 && (
-        <div className="mb-4 flex gap-2">
-          <button
-            onClick={() => setFilter("all")}
-            className={`px-4 py-2 rounded ${
-              filter === "all" ? "bg-blue-500 text-white" : "bg-gray-200"
-            }`}
-          >
-            All
-          </button>
-          <button
-            onClick={() => setFilter("solo")}
-            className={`px-4 py-2 rounded ${
-              filter === "solo" ? "bg-blue-500 text-white" : "bg-gray-200"
-            }`}
-          >
-            Solo Queue
-          </button>
-          <button
-            onClick={() => setFilter("party")}
-            className={`px-4 py-2 rounded ${
-              filter === "party" ? "bg-blue-500 text-white" : "bg-gray-200"
-            }`}
-          >
-            Party
-          </button>
+        <div className="mb-4">
+          <div className="flex gap-2 mb-2">
+            <button
+              onClick={() => setFilter("all")}
+              className={`px-4 py-2 rounded ${
+                filter === "all" ? "bg-blue-500 text-white" : "bg-gray-200"
+              }`}
+            >
+              All
+            </button>
+            <button
+              onClick={() => setFilter("solo")}
+              className={`px-4 py-2 rounded ${
+                filter === "solo" ? "bg-blue-500 text-white" : "bg-gray-200"
+              }`}
+            >
+              Solo Queue
+            </button>
+            <button
+              onClick={() => setFilter("party")}
+              className={`px-4 py-2 rounded ${
+                filter === "party" ? "bg-blue-500 text-white" : "bg-gray-200"
+              }`}
+            >
+              Party
+            </button>
+          </div>
+          
+          {/* Nota sobre party_size inferido */}
+          {matches.some(m => m.party_size === undefined) && (
+            <div className="text-xs text-gray-600 bg-yellow-50 border border-yellow-200 rounded px-3 py-2">
+              <span className="font-medium">ℹ️ Nota:</span> Algunas partidas muestran valores inferidos de party size (⚠️) 
+              cuando la API no proporciona esta información. Se usa lógica de respaldo basada en party_id.
+            </div>
+          )}
         </div>
       )}
 
@@ -366,7 +403,19 @@ export default function DotaMatches() {
                   {m.kills}/{m.deaths}/{m.assists}
                 </td>
                 <td className="border px-2 py-1">{Math.floor(m.duration / 60)}</td>
-                <td className="border px-2 py-1">{m.party_size}</td>
+                <td className="border px-2 py-1">
+                  <span className="flex items-center">
+                    {getPartySize(m)}
+                    {m.party_size === undefined && (
+                      <span 
+                        className="text-xs text-orange-500 ml-1 cursor-help" 
+                        title="Valor inferido - La API no proporcionó party_size"
+                      >
+                        ⚠️
+                      </span>
+                    )}
+                  </span>
+                </td>
                 <td className="border px-2 py-1">{formatDate(m.start_time)}</td>
                 <td className="border px-2 py-1">{didWin(m) ? "Win" : "Lose"}</td>
               </tr>
