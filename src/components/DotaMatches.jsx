@@ -225,9 +225,14 @@ export default function DotaMatches() {
 
   // Función para iniciar sesión con Steam
   const loginWithSteam = () => {
+    console.log('🎮 Iniciando autenticación con Steam...');
+    
     // Usar la autenticación local - Steam regresará a la página actual
     const realm = window.location.origin;
     const returnUrl = window.location.href; // Regresar a la página actual
+    
+    console.log('📍 Realm:', realm);
+    console.log('📍 Return URL:', returnUrl);
     
     const params = new URLSearchParams({
       'openid.ns': 'http://specs.openid.net/auth/2.0',
@@ -239,7 +244,16 @@ export default function DotaMatches() {
     });
 
     const steamAuthUrl = `https://steamcommunity.com/openid/login?${params.toString()}`;
-    window.location.href = steamAuthUrl;
+    console.log('🔗 Steam Auth URL:', steamAuthUrl);
+    
+    // Intentar redirección
+    try {
+      window.location.href = steamAuthUrl;
+      console.log('✅ Redirección iniciada');
+    } catch (error) {
+      console.error('❌ Error en redirección:', error);
+      setError(`Error de redirección: ${error.message}`);
+    }
   };
 
   // Función para cerrar sesión
