@@ -46,8 +46,8 @@ export const processSteamCallback = async () => {
   // Simular datos del usuario (en producción esto vendría de Steam API)
   const userData = {
     steamID: steamId,
-    name: 'Usuario de Steam (Desarrollo)',
-    avatar: 'https://via.placeholder.com/184x184?text=Steam+Dev',
+    name: `Usuario Steam ${steamId.substring(0, 8)}`,
+    avatar: `https://via.placeholder.com/184x184/2196F3/FFFFFF?text=Steam+${steamId.substring(0, 4)}`,
     ip: '192.168.xxx.xxx',
     country: 'AR',
     createdAt: new Date().toISOString()

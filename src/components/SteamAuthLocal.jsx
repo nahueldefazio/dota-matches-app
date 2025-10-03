@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { generateSteamAuthUrl, processSteamCallback, getSteamProfile } from '../utils/steamAuth';
+import { generateSteamAuthUrl, processSteamCallback } from '../utils/steamAuth';
 
 /**
  * Componente de autenticación con Steam para desarrollo local
@@ -52,46 +52,10 @@ export default function SteamAuthLocal() {
       addLog('Procesando callback de Steam (modo desarrollo local)...', 'info');
 
       // En desarrollo local, procesamos directamente sin hacer fetch a APIs
-      const urlParams = new URLSearchParams(window.location.search);
+      const userData = await processSteamCallback();
       
-      if (!urlParams.has('openid.claimed_id') || !urlParams.has('openid.identity')) {
-        throw new Error('No se encontraron parámetros de Steam en la URL');
-      }
-
-      addLog('Parámetros de Steam encontrados en la URL', 'success');
-
-      // Extraer SteamID64 de la URL
-      const claimedId = urlParams.get('openid.claimed_id');
-      const steamIdMatch = claimedId.match(/\/id\/(\d+)/);
-      
-      if (!steamIdMatch) {
-        throw new Error('No se pudo extraer SteamID de la URL');
-      }
-
-      const steamId = steamIdMatch[1];
-      addLog(`SteamID extraído: ${steamId}`, 'success');
-      
-      // Crear datos del usuario
-      const userData = {
-        steamID: steamId,
-        name: 'Usuario de Steam (Desarrollo)',
-        avatar: 'https://via.placeholder.com/184x184?text=Steam+Dev',
-        ip: '192.168.xxx.xxx',
-        country: 'AR',
-        createdAt: new Date().toISOString()
-      };
-
+      addLog(`SteamID extraído: ${userData.steamID}`, 'success');
       addLog('Datos del usuario creados', 'success');
-      
-      // Intentar obtener el perfil real de Steam (opcional)
-      try {
-        const steamProfile = await getSteamProfile(userData.steamID);
-        userData.name = steamProfile.personaname;
-        userData.avatar = steamProfile.avatar;
-        addLog('Perfil de Steam obtenido exitosamente', 'success');
-      } catch (profileError) {
-        addLog('Usando datos simulados (API no disponible en desarrollo)', 'warning');
-      }
       
       setUser(userData);
       addLog('Autenticación completada exitosamente', 'success');
