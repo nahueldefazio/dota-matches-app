@@ -330,7 +330,9 @@ export default function DotaMatches() {
       
       // Verificar que la API key esté disponible
       if (!steamApiKey) {
-        throw new Error('Steam API Key no está configurada en las variables de entorno');
+        console.log('❌ Variables de entorno disponibles:', import.meta.env);
+        console.log('❌ VITE_STEAM_API_KEY:', import.meta.env.VITE_STEAM_API_KEY);
+        throw new Error('Steam API Key no está configurada. Reinicia el servidor de desarrollo (Ctrl+C y luego npm run dev)');
       }
       
       console.log(`🔑 API Key configurada: ${steamApiKey.substring(0, 8)}...`);
