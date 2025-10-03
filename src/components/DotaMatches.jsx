@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import SteamAuth from "./SteamAuth";
+import { processSteamCallback } from "../utils/steamAuth";
 
 const DEFAULT_STEAM32_ID = 72810287;
 const HEROES_API = "https://api.opendota.com/api/heroes";
@@ -85,17 +86,10 @@ export default function DotaMatches() {
   const handleSteamCallback = async () => {
     try {
       setLoading(true);
+      setError("");
       
-      const response = await fetch('/api/auth/steam/callback', {
-        method: 'GET',
-        credentials: 'include'
-      });
-
-      if (!response.ok) {
-        throw new Error(`Error ${response.status}: ${response.statusText}`);
-      }
-
-      const userData = await response.json();
+      // Usar la autenticación local en lugar de fetch a APIs serverless
+      const userData = await processSteamCallback();
       
       if (userData.steamID) {
         setAuthenticatedUser(userData);
@@ -225,7 +219,21 @@ export default function DotaMatches() {
 
   // Función para iniciar sesión con Steam
   const loginWithSteam = () => {
-    window.location.href = '/api/auth/steam';
+    // Usar la autenticación local en lugar de APIs serverless
+    const realm = window.location.origin;
+    const returnUrl = `${realm}/api/auth/steam/callback`;
+    
+    const params = new URLSearchParams({
+      'openid.ns': 'http://specs.openid.net/auth/2.0',
+      'openid.mode': 'checkid_setup',
+      'openid.return_to': returnUrl,
+      'openid.realm': realm,
+      'openid.identity': 'http://specs.openid.net/auth/2.0/identifier_select',
+      'openid.claimed_id': 'http://specs.openid.net/auth/2.0/identifier_select'
+    });
+
+    const steamAuthUrl = `https://steamcommunity.com/openid/login?${params.toString()}`;
+    window.location.href = steamAuthUrl;
   };
 
   // Función para cerrar sesión
