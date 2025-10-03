@@ -1,7 +1,7 @@
 import React, { useState } from 'react'
 import DotaMatches from './components/DotaMatches'
 import SteamAuthTest from './components/SteamAuthTest'
-import APIDebug from './components/APIDebug'
+import SteamAuthLocal from './components/SteamAuthLocal'
 
 function App() {
   const [currentView, setCurrentView] = useState('main') // main, test, debug
@@ -9,7 +9,7 @@ function App() {
   const getViewComponent = () => {
     switch (currentView) {
       case 'test': return <SteamAuthTest />;
-      case 'debug': return <APIDebug />;
+      case 'local': return <SteamAuthLocal />;
       default: return <DotaMatches />;
     }
   };
@@ -30,14 +30,14 @@ function App() {
         </button>
         
         <button
-          onClick={() => setCurrentView(currentView === 'debug' ? 'main' : 'debug')}
+          onClick={() => setCurrentView(currentView === 'local' ? 'main' : 'local')}
           className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-            currentView === 'debug'
+            currentView === 'local'
               ? 'bg-green-600 hover:bg-green-700 text-white' 
               : 'bg-gray-600 hover:bg-gray-700 text-white'
           }`}
         >
-          {currentView === 'debug' ? '📊 App Principal' : '🔧 Debug APIs'}
+          {currentView === 'local' ? '📊 App Principal' : '🎮 Steam Local'}
         </button>
       </div>
 
