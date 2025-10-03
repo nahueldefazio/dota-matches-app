@@ -188,32 +188,6 @@ export default function SteamAuth() {
     );
   }
 
-  // Estado inicial - mostrar botón de login
-  return (
-    <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 mb-6">
-      <div className="text-center">
-        <div className="text-4xl mb-4">🎮</div>
-        <h3 className="text-blue-800 font-semibold text-lg mb-2">Autenticación con Steam</h3>
-        <p className="text-blue-700 mb-4">
-          Inicia sesión con tu cuenta de Steam para acceder a todas las funciones de la aplicación.
-        </p>
-        
-        <button
-          onClick={loginWithSteam}
-          className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-md font-medium transition-colors flex items-center mx-auto"
-        >
-          <svg className="w-5 h-5 mr-2" viewBox="0 0 24 24" fill="currentColor">
-            <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
-          </svg>
-          Iniciar sesión con Steam
-        </button>
-        
-        <div className="mt-4 text-xs text-blue-600">
-          <p>✅ Autenticación segura con Steam OpenID</p>
-          <p>🔒 No almacenamos tu contraseña</p>
-          <p>🌍 Detectamos tu ubicación aproximada</p>
-        </div>
-      </div>
-    </div>
-  );
+  // Estado inicial - no mostrar nada
+  return null;
 }
