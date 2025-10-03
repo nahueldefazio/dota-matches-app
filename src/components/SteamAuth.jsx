@@ -78,23 +78,6 @@ export default function SteamAuth() {
     );
   }
 
-  if (error) {
-    return (
-      <div className="bg-red-50 border border-red-200 rounded-lg p-6 mb-6">
-        <div className="flex items-center mb-3">
-          <div className="text-red-500 text-xl mr-2">⚠️</div>
-          <h3 className="text-red-800 font-semibold">Error de Autenticación</h3>
-        </div>
-        <p className="text-red-700 mb-4">{error}</p>
-        <button
-          onClick={loginWithSteam}
-          className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-md transition-colors"
-        >
-          Intentar de nuevo
-        </button>
-      </div>
-    );
-  }
 
   if (isAuthenticated && user) {
     return (
