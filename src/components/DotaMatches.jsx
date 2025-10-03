@@ -327,14 +327,59 @@ export default function DotaMatches() {
       
       // Usar la API de Steam para obtener amigos
       const steamApiKey = import.meta.env.VITE_STEAM_API_KEY;
+      
+      // Verificar que la API key esté disponible
+      if (!steamApiKey) {
+        throw new Error('Steam API Key no está configurada en las variables de entorno');
+      }
+      
+      console.log(`🔑 API Key configurada: ${steamApiKey.substring(0, 8)}...`);
+      console.log(`🆔 Steam ID: ${steam64Id}`);
+      
+      // Primero verificar si el perfil es accesible
+      console.log('🔍 Verificando acceso al perfil...');
+      const profileUrl = `https://api.steampowered.com/ISteamUser/GetPlayerSummaries/v0002/?key=${steamApiKey}&steamids=${steam64Id}`;
+      console.log(`🔗 URL de perfil: ${profileUrl}`);
+      
+      const profileResponse = await fetch(profileUrl);
+      console.log(`📡 Respuesta de perfil: ${profileResponse.status} ${profileResponse.statusText}`);
+      
+      if (!profileResponse.ok) {
+        const errorText = await profileResponse.text();
+        console.error(`❌ Error en perfil: ${errorText}`);
+        throw new Error('No se puede acceder al perfil. Verifica tu API key o que el perfil sea público.');
+      }
+      
+      const profileData = await profileResponse.json();
+      console.log('👤 Datos del perfil:', profileData);
+      
+      if (!profileData.response || !profileData.response.players || profileData.response.players.length === 0) {
+        throw new Error('No se encontró el perfil de Steam. Verifica que el Steam ID sea correcto.');
+      }
+      
+      const player = profileData.response.players[0];
+      console.log(`✅ Perfil accesible: ${player.personaname}`);
+      
+      // Ahora intentar obtener amigos
       const friendsUrl = `https://api.steampowered.com/ISteamUser/GetFriendList/v0001/?key=${steamApiKey}&steamid=${steam64Id}&relationship=friend`;
       
       console.log(`🔗 URL de amigos: ${friendsUrl}`);
       
       const response = await fetch(friendsUrl);
       
+      console.log(`📡 Respuesta del servidor: ${response.status} ${response.statusText}`);
+      
       if (!response.ok) {
-        throw new Error(`Error ${response.status}: ${response.statusText}`);
+        const errorText = await response.text();
+        console.error(`❌ Error response body: ${errorText}`);
+        
+        if (response.status === 403) {
+          throw new Error('Acceso denegado. Tu perfil de Steam es privado o no permite ver la lista de amigos.');
+        } else if (response.status === 401) {
+          throw new Error('API key de Steam inválida. Verifica tu configuración.');
+        } else {
+          throw new Error(`Error ${response.status}: ${response.statusText}`);
+        }
       }
       
       const data = await response.json();
