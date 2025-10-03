@@ -225,9 +225,9 @@ export default function DotaMatches() {
 
   // Función para iniciar sesión con Steam
   const loginWithSteam = () => {
-    // Usar la autenticación local en lugar de APIs serverless
+    // Usar la autenticación local - Steam regresará a la página actual
     const realm = window.location.origin;
-    const returnUrl = `${realm}/api/auth/steam/callback`;
+    const returnUrl = window.location.href; // Regresar a la página actual
     
     const params = new URLSearchParams({
       'openid.ns': 'http://specs.openid.net/auth/2.0',
