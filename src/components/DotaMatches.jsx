@@ -369,7 +369,7 @@ export default function DotaMatches() {
           </div>
         </form>
         
-        {error && (
+        {error && !authenticatedUser && (
           <div className="mt-3 p-3 bg-red-100 border border-red-400 text-red-700 rounded-md">
             {error}
           </div>
