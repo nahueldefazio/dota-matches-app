@@ -58,36 +58,15 @@ export const processSteamCallback = async () => {
 
 /**
  * Obtiene información del perfil de Steam usando la API
+ * En desarrollo local, retorna datos simulados debido a CORS
  */
 export const getSteamProfile = async (steamId) => {
-  const steamApiKey = import.meta.env.VITE_STEAM_API_KEY || 'F987D8BABA15BF060E7A70D190C52D0D';
+  console.log(`Intentando obtener perfil para SteamID: ${steamId}`);
   
-  if (!steamApiKey) {
-    console.warn('STEAM_API_KEY no configurado, usando datos de desarrollo');
-    return {
-      personaname: 'Usuario de Steam (Desarrollo)',
-      avatar: 'https://via.placeholder.com/184x184?text=Steam+Dev'
-    };
-  }
-
-  try {
-    // Usar JSONP o fetch directo (Steam API no tiene CORS)
-    const response = await fetch(
-      `https://api.steampowered.com/ISteamUser/GetPlayerSummaries/v0002/?key=${steamApiKey}&steamids=${steamId}`,
-      { mode: 'no-cors' }
-    );
-    
-    // Como no-cors no nos da acceso a la respuesta, usaremos datos simulados
-    return {
-      personaname: 'Usuario de Steam (Desarrollo)',
-      avatar: 'https://via.placeholder.com/184x184?text=Steam+Dev'
-    };
-    
-  } catch (error) {
-    console.error('Error fetching Steam profile:', error);
-    return {
-      personaname: 'Usuario de Steam (Desarrollo)',
-      avatar: 'https://via.placeholder.com/184x184?text=Steam+Dev'
-    };
-  }
+  // En desarrollo local, la Steam API no es accesible debido a CORS
+  // En producción, esto se manejaría en el backend
+  return {
+    personaname: `Usuario Steam ${steamId.substring(0, 8)}`,
+    avatar: `https://via.placeholder.com/184x184/2196F3/FFFFFF?text=Steam+${steamId.substring(0, 4)}`
+  };
 };

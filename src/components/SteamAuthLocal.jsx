@@ -49,11 +49,41 @@ export default function SteamAuthLocal() {
     try {
       setLoading(true);
       setError(null);
-      addLog('Procesando callback de Steam...', 'info');
+      addLog('Procesando callback de Steam (modo desarrollo local)...', 'info');
 
-      const userData = await processSteamCallback();
+      // En desarrollo local, procesamos directamente sin hacer fetch a APIs
+      const urlParams = new URLSearchParams(window.location.search);
       
-      // Intentar obtener el perfil real de Steam
+      if (!urlParams.has('openid.claimed_id') || !urlParams.has('openid.identity')) {
+        throw new Error('No se encontraron parámetros de Steam en la URL');
+      }
+
+      addLog('Parámetros de Steam encontrados en la URL', 'success');
+
+      // Extraer SteamID64 de la URL
+      const claimedId = urlParams.get('openid.claimed_id');
+      const steamIdMatch = claimedId.match(/\/id\/(\d+)/);
+      
+      if (!steamIdMatch) {
+        throw new Error('No se pudo extraer SteamID de la URL');
+      }
+
+      const steamId = steamIdMatch[1];
+      addLog(`SteamID extraído: ${steamId}`, 'success');
+      
+      // Crear datos del usuario
+      const userData = {
+        steamID: steamId,
+        name: 'Usuario de Steam (Desarrollo)',
+        avatar: 'https://via.placeholder.com/184x184?text=Steam+Dev',
+        ip: '192.168.xxx.xxx',
+        country: 'AR',
+        createdAt: new Date().toISOString()
+      };
+
+      addLog('Datos del usuario creados', 'success');
+      
+      // Intentar obtener el perfil real de Steam (opcional)
       try {
         const steamProfile = await getSteamProfile(userData.steamID);
         userData.name = steamProfile.personaname;
