@@ -29,21 +29,30 @@ export default function SteamAuthTest() {
   // Función para iniciar la autenticación
   const startSteamAuth = async () => {
     try {
-      addLog('Iniciando autenticación con Steam...', 'info');
-      addLog('Redirigiendo a /api/auth/steam', 'info');
+      addLog('Iniciando autenticación con Steam (modo desarrollo local)...', 'info');
       
-      // Verificar que el endpoint esté disponible
-      const response = await fetch('/api/auth/steam', {
-        method: 'GET',
-        redirect: 'manual'
+      // Usar la autenticación local - Steam regresará a la página actual
+      const realm = window.location.origin;
+      const returnUrl = window.location.href;
+      
+      addLog(`Realm: ${realm}`, 'info');
+      addLog(`Return URL: ${returnUrl}`, 'info');
+      
+      const params = new URLSearchParams({
+        'openid.ns': 'http://specs.openid.net/auth/2.0',
+        'openid.mode': 'checkid_setup',
+        'openid.return_to': returnUrl,
+        'openid.realm': realm,
+        'openid.identity': 'http://specs.openid.net/auth/2.0/identifier_select',
+        'openid.claimed_id': 'http://specs.openid.net/auth/2.0/identifier_select'
       });
+
+      const steamAuthUrl = `https://steamcommunity.com/openid/login?${params.toString()}`;
+      addLog(`Steam Auth URL generada`, 'success');
       
-      if (response.type === 'opaqueredirect' || response.status === 302) {
-        addLog('Redirección detectada, navegando a Steam...', 'success');
-        window.location.href = '/api/auth/steam';
-      } else {
-        throw new Error(`Error inesperado: ${response.status}`);
-      }
+      // Redirigir a Steam
+      window.location.href = steamAuthUrl;
+      addLog('Redirección iniciada a Steam', 'success');
       
     } catch (err) {
       addLog(`Error al iniciar autenticación: ${err.message}`, 'error');
@@ -56,22 +65,37 @@ export default function SteamAuthTest() {
     try {
       setLoading(true);
       setError(null);
-      addLog('Procesando callback de Steam...', 'info');
+      addLog('Procesando callback de Steam (modo desarrollo local)...', 'info');
 
-      const response = await fetch('/api/auth/steam/callback', {
-        method: 'GET',
-        credentials: 'include'
-      });
-
-      addLog(`Respuesta del servidor: ${response.status}`, 'info');
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`Error ${response.status}: ${errorText}`);
+      const urlParams = new URLSearchParams(window.location.search);
+      
+      if (!urlParams.has('openid.claimed_id') || !urlParams.has('openid.identity')) {
+        throw new Error('No se encontraron parámetros de Steam en la URL');
       }
 
-      const userData = await response.json();
-      addLog('Datos del usuario recibidos exitosamente', 'success');
+      addLog('Parámetros de Steam encontrados en la URL', 'success');
+
+      const claimedId = urlParams.get('openid.claimed_id');
+      const steamIdMatch = claimedId.match(/\/id\/(\d+)/);
+      
+      if (!steamIdMatch) {
+        throw new Error('No se pudo extraer SteamID de la URL');
+      }
+
+      const steamId = steamIdMatch[1];
+      addLog(`SteamID extraído: ${steamId}`, 'success');
+      
+      // Crear datos del usuario simulados para desarrollo
+      const userData = {
+        steamID: steamId,
+        name: `Usuario Steam ${steamId.substring(0, 8)}`,
+        avatar: `https://via.placeholder.com/184x184/2196F3/FFFFFF?text=Steam+${steamId.substring(0, 4)}`,
+        ip: '192.168.xxx.xxx', // Simulated IP
+        country: 'AR', // Simulated country
+        createdAt: new Date().toISOString()
+      };
+
+      addLog('Datos del usuario creados para desarrollo', 'success');
       
       setUser(userData);
       
@@ -128,10 +152,7 @@ export default function SteamAuthTest() {
           {!user && !loading && (
             <div className="space-y-2">
               <button
-                onClick={() => {
-                  addLog('Redirigiendo directamente a Steam...', 'info');
-                  window.location.href = '/api/auth/steam';
-                }}
+                onClick={startSteamAuth}
                 className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-medium transition-colors flex items-center"
               >
                 🎮 Iniciar Sesión con Steam
