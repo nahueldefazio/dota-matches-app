@@ -10,7 +10,7 @@ const client = new MongoClient(process.env.MONGODB_URI, {
 // Steam OpenID configuration
 const STEAM_REALM = process.env.VERCEL_URL 
   ? `https://${process.env.VERCEL_URL}` 
-  : 'http://localhost:3000';
+  : 'http://localhost:5175';
 const STEAM_RETURN_URL = `${STEAM_REALM}/api/auth/steam/callback`;
 
 /**

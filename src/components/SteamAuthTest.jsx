@@ -27,10 +27,28 @@ export default function SteamAuthTest() {
   }, []);
 
   // Función para iniciar la autenticación
-  const startSteamAuth = () => {
-    addLog('Iniciando autenticación con Steam...', 'info');
-    addLog('Redirigiendo a /api/auth/steam', 'info');
-    window.location.href = '/api/auth/steam';
+  const startSteamAuth = async () => {
+    try {
+      addLog('Iniciando autenticación con Steam...', 'info');
+      addLog('Redirigiendo a /api/auth/steam', 'info');
+      
+      // Verificar que el endpoint esté disponible
+      const response = await fetch('/api/auth/steam', {
+        method: 'GET',
+        redirect: 'manual'
+      });
+      
+      if (response.type === 'opaqueredirect' || response.status === 302) {
+        addLog('Redirección detectada, navegando a Steam...', 'success');
+        window.location.href = '/api/auth/steam';
+      } else {
+        throw new Error(`Error inesperado: ${response.status}`);
+      }
+      
+    } catch (err) {
+      addLog(`Error al iniciar autenticación: ${err.message}`, 'error');
+      setError(`Error al iniciar autenticación: ${err.message}`);
+    }
   };
 
   // Función para procesar el callback
@@ -108,12 +126,23 @@ export default function SteamAuthTest() {
         {/* Botones de acción */}
         <div className="mb-6 flex gap-4">
           {!user && !loading && (
-            <button
-              onClick={startSteamAuth}
-              className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-medium transition-colors flex items-center"
-            >
-              🎮 Iniciar Sesión con Steam
-            </button>
+            <div className="space-y-2">
+              <button
+                onClick={() => {
+                  addLog('Redirigiendo directamente a Steam...', 'info');
+                  window.location.href = '/api/auth/steam';
+                }}
+                className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-medium transition-colors flex items-center"
+              >
+                🎮 Iniciar Sesión con Steam
+              </button>
+              <button
+                onClick={startSteamAuth}
+                className="bg-gray-600 hover:bg-gray-700 text-white px-6 py-3 rounded-lg font-medium transition-colors flex items-center text-sm"
+              >
+                🔍 Probar Endpoint (Debug)
+              </button>
+            </div>
           )}
           
           {user && (
@@ -199,6 +228,19 @@ export default function SteamAuthTest() {
             <p><strong>MongoDB:</strong> No configurado (modo demo)</p>
             <p><strong>Endpoint:</strong> /api/auth/steam</p>
             <p><strong>Callback:</strong> /api/auth/steam/callback</p>
+            <p><strong>URL Actual:</strong> {window.location.href}</p>
+            <p><strong>Puerto:</strong> {window.location.port}</p>
+          </div>
+        </div>
+
+        {/* Debug de red */}
+        <div className="mt-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+          <h3 className="font-semibold text-yellow-800 mb-2">🐛 Debug de Red</h3>
+          <div className="text-sm text-yellow-700 space-y-1">
+            <p><strong>User Agent:</strong> {navigator.userAgent}</p>
+            <p><strong>Protocol:</strong> {window.location.protocol}</p>
+            <p><strong>Host:</strong> {window.location.host}</p>
+            <p><strong>API URL:</strong> {window.location.origin}/api/auth/steam</p>
           </div>
         </div>
       </div>
