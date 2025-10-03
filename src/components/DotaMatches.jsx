@@ -74,6 +74,9 @@ export default function DotaMatches() {
 
   // Efecto para manejar la autenticación de Steam
   useEffect(() => {
+    // Limpiar cualquier error previo
+    setError("");
+    
     // Verificar si hay un callback de Steam en la URL
     const urlParams = new URLSearchParams(window.location.search);
     if (urlParams.has('openid.claimed_id') && urlParams.has('openid.identity')) {
@@ -103,6 +106,9 @@ export default function DotaMatches() {
         
         // Limpiar la URL
         window.history.replaceState({}, document.title, window.location.pathname);
+        
+        // Asegurar que no hay errores después de autenticación exitosa
+        setError("");
       }
       
     } catch (err) {
@@ -243,6 +249,7 @@ export default function DotaMatches() {
     setSteam64Id("");
     setMatches([]);
     setError("");
+    setLoading(false);
   };
 
   return (
