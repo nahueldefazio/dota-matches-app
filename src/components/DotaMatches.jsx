@@ -42,6 +42,46 @@ export default function DotaMatches() {
           throw new Error(data.error);
         }
         
+        // Mostrar información detallada de las partidas por consola
+        console.log('🎮 === INFORMACIÓN DE PARTIDAS ===');
+        console.log(`📊 Total de partidas cargadas: ${data.length}`);
+        
+        // Mostrar información de party/amigos
+        const partyMatches = data.filter(m => m.party_id && m.party_id !== 0);
+        const soloMatches = data.filter(m => !m.party_id || m.party_id === 0);
+        
+        console.log(`👥 Partidas en party: ${partyMatches.length}`);
+        console.log(`🎯 Partidas solo: ${soloMatches.length}`);
+        
+        // Mostrar detalles de las primeras 5 partidas en party
+        if (partyMatches.length > 0) {
+          console.log('👥 === PRIMERAS 5 PARTIDAS EN PARTY ===');
+          partyMatches.slice(0, 5).forEach((match, index) => {
+            console.log(`\n🏆 Partida ${index + 1}:`);
+            console.log(`   Match ID: ${match.match_id}`);
+            console.log(`   Party ID: ${match.party_id}`);
+            console.log(`   Party Size: ${match.party_size || 'No disponible'}`);
+            console.log(`   Kills: ${match.kills}`);
+            console.log(`   Deaths: ${match.deaths}`);
+            console.log(`   Assists: ${match.assists}`);
+            console.log(`   Resultado: ${match.radiant_win ? (match.player_slot < 128 ? 'Victoria' : 'Derrota') : (match.player_slot < 128 ? 'Derrota' : 'Victoria')}`);
+            console.log(`   Fecha: ${new Date(match.start_time * 1000).toLocaleString()}`);
+          });
+        }
+        
+        // Mostrar estadísticas de party
+        const partyStats = {
+          total: partyMatches.length,
+          wins: partyMatches.filter(m => (m.radiant_win && m.player_slot < 128) || (!m.radiant_win && m.player_slot >= 128)).length,
+          losses: partyMatches.filter(m => (m.radiant_win && m.player_slot >= 128) || (!m.radiant_win && m.player_slot < 128)).length
+        };
+        
+        console.log('\n📈 === ESTADÍSTICAS DE PARTY ===');
+        console.log(`👥 Total partidas en party: ${partyStats.total}`);
+        console.log(`✅ Victorias en party: ${partyStats.wins}`);
+        console.log(`❌ Derrotas en party: ${partyStats.losses}`);
+        console.log(`📊 Win rate en party: ${partyStats.total > 0 ? ((partyStats.wins / partyStats.total) * 100).toFixed(1) : 0}%`);
+        
         setMatches(data);
       } catch (err) {
         console.error("Error fetching matches:", err);
@@ -151,6 +191,22 @@ export default function DotaMatches() {
     if (filter === "party") return partySize > 1;
     return true;
   });
+
+  // Log cuando cambie el filtro
+  useEffect(() => {
+    if (matches.length > 0) {
+      console.log(`\n🔍 === FILTRO APLICADO: ${filter.toUpperCase()} ===`);
+      console.log(`📊 Partidas mostradas: ${filteredMatches.length} de ${matches.length}`);
+      
+      if (filter === "party") {
+        console.log('👥 Mostrando solo partidas jugadas con amigos/party');
+      } else if (filter === "solo") {
+        console.log('🎯 Mostrando solo partidas jugadas solo');
+      } else {
+        console.log('📋 Mostrando todas las partidas');
+      }
+    }
+  }, [filter, filteredMatches.length, matches.length]);
 
   const formatDate = (timestamp) =>
     new Date(timestamp * 1000).toLocaleString();
