@@ -15,6 +15,8 @@ export default function DotaMatches() {
   const [error, setError] = useState("");
   const [converting, setConverting] = useState(false);
   const [authenticatedUser, setAuthenticatedUser] = useState(null);
+  const [friends, setFriends] = useState([]);
+  const [loadingFriends, setLoadingFriends] = useState(false);
 
   // Cargar partidas solo cuando hay un Steam ID
   useEffect(() => {
@@ -312,14 +314,108 @@ export default function DotaMatches() {
     }
   };
 
+  // Función para obtener amigos de Steam
+  const fetchSteamFriends = async () => {
+    if (!steam64Id) {
+      console.log('❌ No hay Steam ID disponible para obtener amigos');
+      return;
+    }
+
+    try {
+      setLoadingFriends(true);
+      console.log('👥 Obteniendo lista de amigos de Steam...');
+      
+      // Usar la API de Steam para obtener amigos
+      const steamApiKey = import.meta.env.VITE_STEAM_API_KEY;
+      const friendsUrl = `https://api.steampowered.com/ISteamUser/GetFriendList/v0001/?key=${steamApiKey}&steamid=${steam64Id}&relationship=friend`;
+      
+      console.log(`🔗 URL de amigos: ${friendsUrl}`);
+      
+      const response = await fetch(friendsUrl);
+      
+      if (!response.ok) {
+        throw new Error(`Error ${response.status}: ${response.statusText}`);
+      }
+      
+      const data = await response.json();
+      console.log('📋 Respuesta de la API de Steam:', data);
+      
+      if (data.response && data.response.friendslist && data.response.friendslist.friends) {
+        const friendsList = data.response.friendslist.friends;
+        console.log(`👥 Total de amigos encontrados: ${friendsList.length}`);
+        
+        // Obtener información detallada de cada amigo
+        const friendIds = friendsList.map(friend => friend.steamid);
+        console.log('🆔 IDs de amigos:', friendIds);
+        
+        // Hacer batch request para obtener información de perfil de los amigos
+        if (friendIds.length > 0) {
+          const batchUrl = `https://api.steampowered.com/ISteamUser/GetPlayerSummaries/v0002/?key=${steamApiKey}&steamids=${friendIds.join(',')}`;
+          console.log(`🔗 URL de perfiles: ${batchUrl}`);
+          
+          const profileResponse = await fetch(batchUrl);
+          const profileData = await profileResponse.json();
+          
+          if (profileData.response && profileData.response.players) {
+            const friendsWithProfiles = profileData.response.players.map(player => ({
+              steamid: player.steamid,
+              personaname: player.personaname,
+              profileurl: player.profileurl,
+              avatar: player.avatarmedium,
+              personastate: player.personastate, // 0: Offline, 1: Online, 2: Busy, 3: Away, 4: Snooze, 5: Looking to trade, 6: Looking to play
+              lastlogoff: player.lastlogoff,
+              realname: player.realname || 'No disponible'
+            }));
+            
+            console.log('👥 === LISTA DE AMIGOS DE STEAM ===');
+            friendsWithProfiles.forEach((friend, index) => {
+              const statusText = {
+                0: '🔴 Offline',
+                1: '🟢 Online',
+                2: '🟡 Busy',
+                3: '🟠 Away',
+                4: '😴 Snooze',
+                5: '💼 Looking to trade',
+                6: '🎮 Looking to play'
+              }[friend.personastate] || '❓ Unknown';
+              
+              console.log(`\n👤 Amigo ${index + 1}:`);
+              console.log(`   Nombre: ${friend.personaname}`);
+              console.log(`   Steam ID: ${friend.steamid}`);
+              console.log(`   Estado: ${statusText}`);
+              console.log(`   Último login: ${new Date(friend.lastlogoff * 1000).toLocaleString()}`);
+              console.log(`   Nombre real: ${friend.realname}`);
+              console.log(`   Perfil: ${friend.profileurl}`);
+            });
+            
+            setFriends(friendsWithProfiles);
+            console.log(`✅ Lista de amigos cargada exitosamente: ${friendsWithProfiles.length} amigos`);
+          }
+        }
+      } else {
+        console.log('❌ No se encontraron amigos o la respuesta es inválida');
+        setFriends([]);
+      }
+      
+    } catch (error) {
+      console.error('❌ Error obteniendo amigos de Steam:', error);
+      console.log('💡 Nota: Esto puede deberse a que el perfil es privado o no tienes amigos');
+      setError(`Error obteniendo amigos: ${error.message}`);
+    } finally {
+      setLoadingFriends(false);
+    }
+  };
+
   // Función para cerrar sesión
   const logout = () => {
     setAuthenticatedUser(null);
     setSteamId("");
     setSteam64Id("");
     setMatches([]);
+    setFriends([]);
     setError("");
     setLoading(false);
+    setLoadingFriends(false);
   };
 
   return (
@@ -405,7 +501,7 @@ export default function DotaMatches() {
             </div>
           </div>
 
-          <div className="flex justify-center gap-4">
+          <div className="flex justify-center gap-4 flex-wrap">
             <button
               type="submit"
               disabled={loading}
@@ -426,6 +522,30 @@ export default function DotaMatches() {
                 </>
               )}
             </button>
+            
+            {steam64Id && (
+              <button
+                type="button"
+                onClick={fetchSteamFriends}
+                disabled={loadingFriends}
+                className={`px-6 py-2 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 transition-colors flex items-center gap-2 ${
+                  loadingFriends 
+                    ? 'bg-gray-400 cursor-not-allowed' 
+                    : 'bg-purple-600 hover:bg-purple-700 text-white'
+                }`}
+              >
+                {loadingFriends ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                    Cargando...
+                  </>
+                ) : (
+                  <>
+                    👥 Ver Amigos
+                  </>
+                )}
+              </button>
+            )}
             
             {!authenticatedUser && (
               <button
@@ -455,6 +575,62 @@ export default function DotaMatches() {
           </div>
         </div>
       </div>
+
+      {/* Sección de Amigos de Steam */}
+      {friends.length > 0 && (
+        <div className="mb-6 bg-white p-4 rounded-lg shadow-md">
+          <h2 className="text-lg font-semibold mb-3 text-purple-800">
+            👥 Amigos de Steam ({friends.length})
+          </h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {friends.map((friend, index) => {
+              const statusText = {
+                0: '🔴 Offline',
+                1: '🟢 Online',
+                2: '🟡 Busy',
+                3: '🟠 Away',
+                4: '😴 Snooze',
+                5: '💼 Looking to trade',
+                6: '🎮 Looking to play'
+              }[friend.personastate] || '❓ Unknown';
+
+              return (
+                <div key={friend.steamid} className="bg-purple-50 border border-purple-200 rounded-lg p-3">
+                  <div className="flex items-center space-x-3 mb-2">
+                    <img 
+                      src={friend.avatar} 
+                      alt={friend.personaname}
+                      className="w-10 h-10 rounded-full border-2 border-purple-300"
+                      onError={(e) => {
+                        e.target.src = 'https://ui-avatars.com/api/?name=' + encodeURIComponent(friend.personaname) + '&size=40&background=9333EA&color=ffffff';
+                      }}
+                    />
+                    <div className="flex-1">
+                      <h3 className="font-medium text-gray-800 text-sm">{friend.personaname}</h3>
+                      <p className="text-xs text-gray-600">{statusText}</p>
+                    </div>
+                  </div>
+                  <div className="text-xs text-gray-600 space-y-1">
+                    <p><strong>Steam ID:</strong> {friend.steamid}</p>
+                    <p><strong>Último login:</strong> {new Date(friend.lastlogoff * 1000).toLocaleDateString()}</p>
+                    {friend.realname && friend.realname !== 'No disponible' && (
+                      <p><strong>Nombre real:</strong> {friend.realname}</p>
+                    )}
+                  </div>
+                  <a 
+                    href={friend.profileurl} 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="inline-block mt-2 text-xs text-purple-600 hover:text-purple-800 underline"
+                  >
+                    Ver perfil →
+                  </a>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* Filtros solo se muestran cuando hay datos */}
       {steamId && matches.length > 0 && (
