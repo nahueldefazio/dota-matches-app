@@ -8,6 +8,8 @@ export const useSteamAuth = () => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [friends, setFriends] = useState([]);
+  const [loadingFriends, setLoadingFriends] = useState(false);
 
   /**
    * Inicia el proceso de autenticación con Steam
@@ -65,17 +67,33 @@ export const useSteamAuth = () => {
 
       const steamId = steamIdMatch[1];
       
-      // Crear datos del usuario simulados para desarrollo
+      // Obtener datos reales del perfil de Steam desde el servidor
+      console.log('🔍 Obteniendo perfil real de Steam...');
+      const profileResponse = await fetch(`http://localhost:3001/api/steam/profile/${steamId}`);
+      
+      if (!profileResponse.ok) {
+        throw new Error('No se pudo obtener el perfil de Steam');
+      }
+      
+      const profileData = await profileResponse.json();
+      const profile = profileData.profile;
+      
+      // Crear datos del usuario con información real de Steam
       const userData = {
         steamID: steamId,
-        name: `Usuario Steam ${steamId.substring(0, 8)}`,
-        avatar: `https://ui-avatars.com/api/?name=Steam+${steamId.substring(0, 4)}&size=184&background=2196F3&color=ffffff`,
-        ip: '192.168.xxx.xxx', // Simulated IP
-        country: 'AR', // Simulated country
+        name: profile.personaname,
+        avatar: profile.avatarfull || profile.avatarmedium || profile.avatar,
+        profileUrl: profile.profileurl,
+        personState: profile.personastate,
+        communityVisibility: profile.communityvisibilitystate,
         createdAt: new Date().toISOString()
       };
 
       setUser(userData);
+      
+      // Cargar automáticamente los amigos después de la autenticación
+      console.log('👥 Cargando amigos automáticamente...');
+      await fetchSteamFriends(steamId);
       
       // Limpiar la URL para remover parámetros de Steam
       window.history.replaceState({}, document.title, window.location.pathname);
@@ -92,11 +110,89 @@ export const useSteamAuth = () => {
   }, []);
 
   /**
+   * Obtiene la lista de amigos de Steam
+   */
+  const fetchSteamFriends = useCallback(async (steamId) => {
+    if (!steamId) {
+      console.log('❌ No hay Steam ID disponible para obtener amigos');
+      return;
+    }
+
+    try {
+      setLoadingFriends(true);
+      console.log(`🆔 Obteniendo amigos para Steam ID: ${steamId}`);
+      
+      // Usar la API del backend en lugar de peticiones directas
+      // Agregar retry mechanism para manejar problemas de conexión
+      let response;
+      let retries = 3;
+      let lastError;
+      
+      for (let i = 0; i < retries; i++) {
+        try {
+          console.log(`🔄 Intento ${i + 1}/${retries} de conexión al servidor...`);
+          response = await fetch(`http://localhost:3001/api/auth/steam/friends?steamId=${steamId}`);
+          break; // Si la conexión es exitosa, salir del loop
+        } catch (error) {
+          lastError = error;
+          console.log(`❌ Intento ${i + 1} falló: ${error.message}`);
+          if (i < retries - 1) {
+            console.log(`⏳ Esperando 2 segundos antes del siguiente intento...`);
+            await new Promise(resolve => setTimeout(resolve, 2000));
+          }
+        }
+      }
+      
+      if (!response) {
+        throw lastError || new Error('No se pudo conectar al servidor después de varios intentos');
+      }
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || `Error ${response.status}: ${response.statusText}`);
+      }
+      
+      const data = await response.json();
+      console.log(`👥 Amigos obtenidos: ${data.count} amigos`);
+      
+      if (data.friends && data.friends.length > 0) {
+        setFriends(data.friends);
+        console.log(`✅ Lista de amigos cargada exitosamente: ${data.friends.length} amigos`);
+        
+        // Mostrar información de los amigos en consola
+        data.friends.forEach((friend, index) => {
+          const statusText = {
+            0: '🔴 Offline',
+            1: '🟢 Online',
+            2: '🟡 Busy',
+            3: '🟠 Away',
+            4: '😴 Snooze',
+            5: '💼 Looking to trade',
+            6: '🎮 Looking to play'
+          }[friend.personastate] || '❓ Unknown';
+          
+          console.log(`👤 Amigo ${index + 1}: ${friend.personaname} (${friend.steamid}) - ${statusText}`);
+        });
+      } else {
+        console.log('❌ No se encontraron amigos');
+        setFriends([]);
+      }
+      
+    } catch (error) {
+      console.error('❌ Error obteniendo amigos de Steam:', error);
+      setFriends([]);
+    } finally {
+      setLoadingFriends(false);
+    }
+  }, []);
+
+  /**
    * Cierra la sesión del usuario
    */
   const logout = useCallback(() => {
     setUser(null);
     setError(null);
+    setFriends([]);
     // Limpiar cualquier dato almacenado localmente si es necesario
   }, []);
 
@@ -112,10 +208,13 @@ export const useSteamAuth = () => {
     user,
     loading,
     error,
+    friends,
+    loadingFriends,
     loginWithSteam,
     handleSteamCallback,
     logout,
     isSteamCallback,
-    isAuthenticated: !!user
+    isAuthenticated: !!user,
+    fetchSteamFriends
   };
 };

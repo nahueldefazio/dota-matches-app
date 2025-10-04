@@ -1,0 +1,2321 @@
+import React, { useState, useEffect } from "react";
+import { useSteamAuth } from "../hooks/useSteamAuth";
+
+export default function DotaMatchesFixed() {
+  const [matches, setMatches] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [timeFilter, setTimeFilter] = useState("month");
+  const [selectedMatch, setSelectedMatch] = useState(null);
+  const [showMatchPopup, setShowMatchPopup] = useState(false);
+  const [matchDetails, setMatchDetails] = useState(null);
+  const [loadingMatchDetails, setLoadingMatchDetails] = useState(false);
+  const [showSteamProfile, setShowSteamProfile] = useState(false);
+  const [showCalendar, setShowCalendar] = useState(false);
+  const [customStartDate, setCustomStartDate] = useState('');
+  const [customEndDate, setCustomEndDate] = useState('');
+  const [matchesLoaded, setMatchesLoaded] = useState(false);
+  const [friendsInMatches, setFriendsInMatches] = useState({});
+  const [checkingFriends, setCheckingFriends] = useState(false);
+  const [heroes, setHeroes] = useState({});
+  const [loadingProgress, setLoadingProgress] = useState({ current: 0, total: 0 });
+  const [autoCheckFriends, setAutoCheckFriends] = useState(false);
+  const [friendsLoadingProgress, setFriendsLoadingProgress] = useState({ current: 0, total: 0 });
+  const [matchStats, setMatchStats] = useState({ solo: { wins: 0, losses: 0 }, party: { wins: 0, losses: 0 } });
+  const [statsReady, setStatsReady] = useState(false);
+
+  // Usar el hook de autenticación de Steam
+  const {
+    user: authenticatedUser,
+    loading: authLoading,
+    error: authError,
+    friends,
+    loadingFriends,
+    loginWithSteam,
+    handleSteamCallback,
+    logout,
+    isSteamCallback,
+    isAuthenticated,
+    fetchSteamFriends
+  } = useSteamAuth();
+
+  // Obtener Steam IDs del usuario autenticado
+  // El Steam ID de 64 bits es: 76561198033076015
+  // El Steam ID de 32 bits (Account ID) es: 72810287
+  // Fórmula correcta: steam64Id - 76561197960265728 - 1
+  const steam64Id = authenticatedUser?.steamID || "";
+  const steamId = steam64Id ? (parseInt(steam64Id) - 76561197960265728 - 1).toString() : "";
+  
+
+  // Manejar callback de Steam
+  useEffect(() => {
+    if (isSteamCallback) {
+      handleSteamCallback();
+    }
+  }, [isSteamCallback, handleSteamCallback]);
+
+  // useEffect para simular progreso de carga de amigos
+  useEffect(() => {
+    if (loadingFriends && friends.length > 0) {
+      const totalFriends = friends.length;
+      let currentFriend = 0;
+      
+      const progressInterval = setInterval(() => {
+        currentFriend += 1;
+        setFriendsLoadingProgress({ current: currentFriend, total: totalFriends });
+        
+        if (currentFriend >= totalFriends) {
+          clearInterval(progressInterval);
+        }
+      }, 50); // Actualizar cada 50ms para simular progreso
+      
+      return () => clearInterval(progressInterval);
+    }
+  }, [loadingFriends, friends.length]);
+
+  // Función para cargar héroes
+  const fetchHeroes = async () => {
+    try {
+      const response = await fetch('https://api.opendota.com/api/heroes');
+      if (!response.ok) {
+        throw new Error(`Error ${response.status}: ${response.statusText}`);
+      }
+      const heroesData = await response.json();
+      const heroesMap = {};
+      heroesData.forEach(hero => {
+        heroesMap[hero.id] = hero.localized_name;
+      });
+      setHeroes(heroesMap);
+      console.log('✅ Héroes cargados:', Object.keys(heroesMap).length);
+    } catch (error) {
+      console.error('❌ Error cargando héroes:', error);
+    }
+  };
+
+  // Función para filtrar partidas por tiempo
+  const filterMatchesByTime = (matches, timeFilter) => {
+    if (!matches || matches.length === 0) return [];
+    
+    const now = Date.now() / 1000;
+    let timeLimit;
+    
+    switch (timeFilter) {
+      case "day":
+        timeLimit = now - (24 * 60 * 60); // 1 día
+        break;
+      case "week":
+        timeLimit = now - (7 * 24 * 60 * 60); // 1 semana
+        break;
+      case "month":
+        timeLimit = now - (30 * 24 * 60 * 60); // 1 mes
+        break;
+      case "2months":
+        timeLimit = now - (60 * 24 * 60 * 60); // 2 meses
+        break;
+      case "3months":
+        timeLimit = now - (90 * 24 * 60 * 60); // 3 meses
+        break;
+      case "all":
+      default:
+        return matches; // Sin filtro de tiempo
+    }
+    
+    return matches.filter(match => match.start_time >= timeLimit);
+  };
+
+  // Función para obtener el party size de una partida
+  const getPartySize = (match) => {
+    if (match.party_size !== undefined && match.party_size !== null && match.party_size > 0) {
+      return match.party_size;
+    }
+    // Si amigos fueron encontrados en esta partida, corregir el party_size
+    if (friendsInMatches[match.match_id] && friendsInMatches[match.match_id].length > 0) {
+      const friendsCount = friendsInMatches[match.match_id].length;
+      return friendsCount + 1; // amigos + jugador actual
+    }
+    // Si party_size es null, intentar inferir de otros campos
+    if (match.party_size === null) {
+      if (match.party_id !== undefined && match.party_id !== null && match.party_id !== 0) {
+        return 2; // Asumir party de al menos 2
+      }
+      return 1; // Asumir solo por defecto
+    }
+    // Si party_size es 0 o undefined, intentar inferir de otros campos
+    if (match.party_id !== undefined && match.party_id !== null && match.party_id !== 0) {
+      return 2; // Asumir party de al menos 2
+    }
+    if (match.lobby_type === 7) { // Ranked matchmaking
+      return 1;
+    }
+    return 1;
+  };
+
+  // Función para obtener el party size original (sin modificar por amigos)
+  const getOriginalPartySize = (match) => {
+    // Usar el party_size original de la API, sin modificaciones
+    if (match.party_size !== undefined && match.party_size !== null && match.party_size > 0) {
+      return match.party_size;
+    }
+    // Si party_size es null o 0, intentar inferir de otros campos
+    if (match.party_id !== undefined && match.party_id !== null && match.party_id !== 0) {
+      return 2; // Asumir party de al menos 2
+    }
+    return 1; // Asumir solo por defecto
+  };
+
+  // Función para obtener la URL de imagen del héroe usando OpenDota API
+  const getHeroImageUrl = (heroId) => {
+    // Buscar el héroe en el objeto heroes (que viene de OpenDota API)
+    const hero = heroes[heroId];
+    if (!hero) {
+      return 'https://cdn.dota2.com/apps/dota2/images/heroes/unknown_full.png';
+    }
+    
+    // El objeto heroes contiene el nombre del héroe como string (ej: "Skywrath Mage", "Invoker")
+    // Necesitamos convertir el nombre localizado a formato de imagen
+    let heroImageName = 'unknown';
+    
+    if (typeof hero === 'string') {
+      // Convertir el nombre localizado a formato de imagen
+      // Ej: "Skywrath Mage" -> "skywrath_mage"
+      heroImageName = hero.toLowerCase()
+        .replace(/[^a-z0-9]/g, '_')
+        .replace(/_+/g, '_')
+        .replace(/^_|_$/g, '');
+      
+      // Mapeo especial para nombres que no coinciden exactamente
+      const specialNames = {
+        'outworld_destroyer': 'obsidian_destroyer',
+        'queen_of_pain': 'queenofpain',
+        'shadow_fiend': 'nevermore',
+        'windrunner': 'windranger',
+        'obsidian_destroyer': 'obsidian_destroyer', // Por si acaso
+        'centaur_warrunner': 'centaur'
+      };
+      
+      if (specialNames[heroImageName]) {
+        heroImageName = specialNames[heroImageName];
+      }
+    } else if (hero.name) {
+      // Si es un objeto con propiedad name (formato OpenDota completo)
+      heroImageName = hero.name.replace('npc_dota_hero_', '');
+    } else if (hero.localized_name) {
+      // Fallback: convertir el nombre localizado a formato de imagen
+      heroImageName = hero.localized_name.toLowerCase()
+        .replace(/[^a-z0-9]/g, '_')
+        .replace(/_+/g, '_')
+        .replace(/^_|_$/g, '');
+      
+      // Aplicar el mismo mapeo especial
+      const specialNames = {
+        'outworld_destroyer': 'obsidian_destroyer',
+        'queen_of_pain': 'queenofpain',
+        'shadow_fiend': 'nevermore',
+        'windrunner': 'windranger',
+        'obsidian_destroyer': 'obsidian_destroyer',
+        'centaur_warrunner': 'centaur'
+      };
+      
+      if (specialNames[heroImageName]) {
+        heroImageName = specialNames[heroImageName];
+      }
+    }
+    
+    const imageUrl = `https://cdn.dota2.com/apps/dota2/images/heroes/${heroImageName}_full.png`;
+    
+    return imageUrl;
+  };
+
+  // Función para calcular estadísticas de partidas
+  const calculateMatchStats = (matchesData) => {
+    const stats = { solo: { wins: 0, losses: 0 }, party: { wins: 0, losses: 0 } };
+    
+    
+    matchesData.forEach((match, index) => {
+      const partySize = getPartySize(match); // Usar getPartySize que incluye detección de amigos
+      const isWin = match.radiant_win;
+      
+      
+      if (partySize === 1) {
+        // Partida solo (party_size = 1)
+        if (isWin) {
+          stats.solo.wins++;
+        } else {
+          stats.solo.losses++;
+        }
+      } else if (partySize > 1) {
+        // Partida en grupo (party_size > 1)
+        if (isWin) {
+          stats.party.wins++;
+        } else {
+          stats.party.losses++;
+        }
+      }
+      // Si partySize es 0 o null, no se cuenta en ninguna categoría
+    });
+    
+    return stats;
+  };
+
+  // Función para calcular estadísticas con amigos pasados como parámetro
+  const calculateMatchStatsWithFriends = (matchesData, friendsData) => {
+    const stats = { solo: { wins: 0, losses: 0 }, party: { wins: 0, losses: 0 } };
+    
+    console.log('📊 Calculando estadísticas para', matchesData.length, 'partidas');
+    console.log('📊 friendsData:', Object.keys(friendsData).length, 'partidas con amigos');
+    console.log('📊 friendsData contenido:', friendsData);
+    
+    matchesData.forEach((match, index) => {
+      // Calcular party size usando los amigos pasados como parámetro
+      let partySize = match.party_size;
+      
+      // Si amigos fueron encontrados en esta partida, corregir el party_size
+      if (friendsData[match.match_id] && friendsData[match.match_id].length > 0) {
+        const friendsCount = friendsData[match.match_id].length;
+        partySize = friendsCount + 1; // amigos + jugador actual
+      } else if (partySize === null || partySize === 0) {
+        // Si party_size es null o 0, intentar inferir de otros campos
+        if (match.party_id !== undefined && match.party_id !== null && match.party_id !== 0) {
+          partySize = 2; // Asumir party de al menos 2
+        } else {
+          partySize = 1; // Asumir solo por defecto
+        }
+      }
+      
+      const isWin = match.radiant_win;
+      
+      // Debug: mostrar las primeras 5 partidas
+      if (index < 5) {
+        console.log(`Partida ${index + 1}: match_id=${match.match_id}, party_size=${match.party_size}, calculatedPartySize=${partySize}, isWin=${isWin}, hasFriends=${!!friendsData[match.match_id]}`);
+        if (friendsData[match.match_id]) {
+          console.log(`  └─ Amigos encontrados:`, friendsData[match.match_id].map(f => f.personaname));
+        }
+      }
+      
+      if (partySize === 1) {
+        // Partida solo (party_size = 1)
+        if (isWin) {
+          stats.solo.wins++;
+        } else {
+          stats.solo.losses++;
+        }
+      } else if (partySize > 1) {
+        // Partida en grupo (party_size > 1)
+        if (isWin) {
+          stats.party.wins++;
+        } else {
+          stats.party.losses++;
+        }
+      }
+      // Si partySize es 0 o null, no se cuenta en ninguna categoría
+    });
+    
+    console.log('📊 Estadísticas calculadas con amigos:', stats);
+    return stats;
+  };
+
+  // Función para verificar si hay amigos en una partida
+  const checkFriendsInMatch = async (match) => {
+    if (!friends || friends.length === 0) return [];
+    
+    try {
+      const response = await fetch(`https://api.opendota.com/api/matches/${match.match_id}`);
+      if (!response.ok) {
+        throw new Error(`Error ${response.status}: ${response.statusText}`);
+      }
+      const matchDetails = await response.json();
+      if (!matchDetails || !matchDetails.players) return [];
+    
+    const friendsFound = [];
+    
+    for (const friend of friends) {
+      // Convertir Steam ID de 64 bits a Account ID
+      const friendAccountId = friend.steamid ? (parseInt(friend.steamid) - 76561197960265728 - 1).toString() : null;
+      
+      for (const player of matchDetails.players) {
+        // Verificar por Account ID
+        if (friendAccountId && player.account_id && player.account_id.toString() === friendAccountId) {
+          friendsFound.push({
+            ...friend,
+            account_id: player.account_id,
+            hero_id: player.hero_id,
+            is_radiant: player.is_radiant
+          });
+          break;
+        }
+        // Verificar por nombre (fallback)
+        if (player.personaname && friend.personaname && 
+            player.personaname.toLowerCase() === friend.personaname.toLowerCase()) {
+          friendsFound.push({
+            ...friend,
+            account_id: player.account_id,
+            hero_id: player.hero_id,
+            is_radiant: player.is_radiant
+          });
+          break;
+        }
+      }
+    }
+    
+    return friendsFound;
+    } catch (error) {
+      console.error(`Error obteniendo detalles de partida ${match.match_id}:`, error);
+      return [];
+    }
+  };
+
+  // Función para verificar amigos en todas las partidas (manual y automática)
+  const checkAllMatchesForFriends = async () => {
+    
+    if (!friends || friends.length === 0) {
+      console.log('❌ No hay amigos cargados para verificar');
+      return;
+    }
+
+    console.log('✅ Iniciando verificación de amigos...');
+    setCheckingFriends(true);
+    const newFriendsInMatches = {};
+    
+    try {
+      // Filtrar partidas que podrían tener amigos (party_size null, 0, 1, o 2)
+      const matchesToCheck = matches.filter(match => {
+        // Usar el party_size original para el filtro, no getPartySize que depende de friendsInMatches
+        const originalPartySize = match.party_size;
+        return originalPartySize === null || originalPartySize <= 2;
+      });
+      
+      console.log(`🔍 Verificando ${matchesToCheck.length} partidas para encontrar amigos...`);
+      
+      // Inicializar progreso
+      setLoadingProgress({ current: 0, total: matchesToCheck.length });
+      
+      for (let i = 0; i < matchesToCheck.length; i++) {
+        const match = matchesToCheck[i];
+        console.log(`🔍 Verificando partida ${match.match_id}... (${i + 1}/${matchesToCheck.length})`);
+        
+        // Actualizar progreso
+        setLoadingProgress({ current: i + 1, total: matchesToCheck.length });
+        
+        const friendsInMatch = await checkFriendsInMatch(match);
+        
+        if (friendsInMatch.length > 0) {
+          newFriendsInMatches[match.match_id] = friendsInMatch;
+          console.log(`✅ Encontrados ${friendsInMatch.length} amigos en partida ${match.match_id}:`, friendsInMatch.map(f => f.personaname));
+        }
+        
+        // Pequeña pausa para evitar rate limiting
+        await new Promise(resolve => setTimeout(resolve, 100));
+      }
+      
+      setFriendsInMatches(newFriendsInMatches);
+      console.log(`🎉 Verificación completada. Amigos encontrados en ${Object.keys(newFriendsInMatches).length} partidas.`);
+      
+      // Calcular estadísticas DESPUÉS de la verificación de amigos
+      const stats = calculateMatchStats(matches);
+      setMatchStats(stats);
+      setStatsReady(true); // Marcar estadísticas como listas
+      console.log('📊 Estadísticas calculadas después de verificación de amigos:', stats);
+      
+    } catch (error) {
+      console.error('❌ Error verificando amigos en partidas:', error);
+      setError(`Error verificando amigos: ${error.message}`);
+    } finally {
+      setCheckingFriends(false);
+      setLoadingProgress({ current: 0, total: 0 });
+      setAutoCheckFriends(false);
+    }
+  };
+
+  const checkAllMatchesForFriendsWithData = async (matchesData) => {
+    console.log('🔍 checkAllMatchesForFriendsWithData ejecutándose...');
+    console.log('🔍 Debug - Estado en checkAllMatchesForFriendsWithData:');
+    console.log('  - friends.length:', friends ? friends.length : 'undefined');
+    console.log('  - matchesData.length:', matchesData.length);
+    console.log('  - autoCheckFriends:', autoCheckFriends);
+    console.log('  - checkingFriends:', checkingFriends);
+    
+    if (!friends || friends.length === 0) {
+      console.log('❌ No hay amigos cargados para verificar');
+      return;
+    }
+
+    console.log('✅ Iniciando verificación de amigos...');
+    setCheckingFriends(true);
+    const newFriendsInMatches = {};
+    
+    try {
+      // Filtrar partidas que podrían tener amigos (party_size null, 0, 1, o 2)
+      const matchesToCheck = matchesData.filter(match => {
+        // Usar el party_size original para el filtro, no getPartySize que depende de friendsInMatches
+        const originalPartySize = match.party_size;
+        return originalPartySize === null || originalPartySize <= 2;
+      });
+      
+      console.log(`🔍 Verificando ${matchesToCheck.length} partidas para encontrar amigos...`);
+      
+      // Inicializar progreso
+      setLoadingProgress({ current: 0, total: matchesToCheck.length });
+      
+      for (let i = 0; i < matchesToCheck.length; i++) {
+        const match = matchesToCheck[i];
+        console.log(`🔍 Verificando partida ${match.match_id}... (${i + 1}/${matchesToCheck.length})`);
+        
+        // Actualizar progreso
+        setLoadingProgress({ current: i + 1, total: matchesToCheck.length });
+        
+        const friendsInMatch = await checkFriendsInMatch(match);
+        
+        if (friendsInMatch.length > 0) {
+          newFriendsInMatches[match.match_id] = friendsInMatch;
+          console.log(`✅ Encontrados ${friendsInMatch.length} amigos en partida ${match.match_id}:`, friendsInMatch.map(f => f.personaname));
+        }
+        
+        // Pequeña pausa para evitar rate limiting
+        await new Promise(resolve => setTimeout(resolve, 100));
+      }
+      
+      setFriendsInMatches(newFriendsInMatches);
+      console.log(`🎉 Verificación completada. Amigos encontrados en ${Object.keys(newFriendsInMatches).length} partidas.`);
+      
+      // Calcular estadísticas DESPUÉS de la verificación de amigos
+      // Usar newFriendsInMatches directamente en lugar del estado
+      const stats = calculateMatchStatsWithFriends(matchesData, newFriendsInMatches);
+      setMatchStats(stats);
+      setStatsReady(true); // Marcar estadísticas como listas
+      console.log('📊 Estadísticas calculadas después de verificación de amigos:', stats);
+      
+    } catch (error) {
+      console.error('❌ Error verificando amigos en partidas:', error);
+      setError(`Error verificando amigos: ${error.message}`);
+    } finally {
+      setCheckingFriends(false);
+      setLoadingProgress({ current: 0, total: 0 });
+      setAutoCheckFriends(false);
+    }
+  };
+
+  // Función para cargar partidas manualmente con selector de tiempo
+  // Función para ejecutar verificación con retry si no hay amigos
+  const executeVerification = (matchesData) => {
+    console.log('🔄 Ejecutando verificación automática...');
+    console.log('🔍 Estado actual de amigos:', friends ? friends.length : 'undefined');
+    
+    if (!friends || friends.length === 0) {
+      console.log('⏳ No hay amigos aún, esperando 2 segundos más...');
+      setTimeout(() => executeVerification(matchesData), 2000);
+      return;
+    }
+    
+    console.log('✅ Amigos disponibles, ejecutando verificación con partidas cargadas...');
+    // Usar las partidas que acabamos de cargar directamente
+    checkAllMatchesForFriendsWithData(matchesData);
+  };
+
+  const loadMatchesWithTimeFilter = async (timeFilter) => {
+    console.log('🔍 Debug - Variables de estado:');
+    console.log('  - authenticatedUser:', authenticatedUser);
+    console.log('  - steamId:', steamId);
+    console.log('  - steam64Id:', steam64Id);
+    
+    if (!authenticatedUser || !steamId || steamId.trim() === "") {
+      alert('Primero debes autenticarte con Steam');
+      return;
+    }
+
+    try {
+      setLoading(true);
+      setError("");
+      console.log(`🆔 Cargando partidas para Steam ID: ${steamId} con filtro: ${timeFilter}`);
+      
+      // Cargar partidas reales desde OpenDota API
+      // OpenDota requiere Steam ID de 32 bits (Account ID)
+      const steam32Id = steamId; // Ya es el ID de 32 bits
+      
+      // Calcular timestamp basado en el filtro
+      const now = Math.floor(Date.now() / 1000);
+      let timeAgo;
+      
+      switch (timeFilter) {
+        case 'day':
+          timeAgo = now - (1 * 24 * 60 * 60); // 1 día
+          break;
+        case 'week':
+          timeAgo = now - (7 * 24 * 60 * 60); // 1 semana
+          break;
+        case '2weeks':
+          timeAgo = now - (14 * 24 * 60 * 60); // 2 semanas
+          break;
+        case 'month':
+          timeAgo = now - (30 * 24 * 60 * 60); // 30 días
+          break;
+        case '3months':
+          timeAgo = now - (90 * 24 * 60 * 60); // 90 días
+          break;
+        default:
+          timeAgo = now - (30 * 24 * 60 * 60); // Por defecto 30 días
+      }
+      
+      const API_URL = `https://api.opendota.com/api/players/${steam32Id}/matches?date=${timeAgo}`;
+      
+      console.log('🔗 Cargando partidas desde OpenDota API...');
+      console.log('🔗 Steam ID 32-bit:', steam32Id);
+      console.log('🔗 Filtro seleccionado:', timeFilter);
+      console.log('🔗 Timestamp calculado:', timeAgo);
+      console.log('🔗 Fecha calculada:', new Date(timeAgo * 1000).toLocaleString());
+      console.log('🔗 URL completa:', API_URL);
+      
+      const response = await fetch(API_URL);
+      console.log('📡 Respuesta de OpenDota:', response.status, response.statusText);
+      
+      if (!response.ok) {
+        throw new Error(`Error ${response.status}: ${response.statusText}`);
+      }
+      
+      const data = await response.json();
+      console.log('📊 Datos recibidos de OpenDota:', data);
+      
+      if (data.error) {
+        throw new Error(data.error);
+      }
+      
+      if (!data || data.length === 0) {
+        console.log('⚠️ No se encontraron partidas en OpenDota');
+        setMatches([]);
+        setTimeFilter(timeFilter);
+        setMatchesLoaded(true);
+        return;
+      }
+      
+      // Filtrar partidas por tiempo
+      const filteredData = filterMatchesByTime(data, timeFilter);
+      
+          setMatches(filteredData);
+          setTimeFilter(timeFilter);
+          setMatchesLoaded(true);
+          setStatsReady(false); // Resetear estadísticas para nuevas partidas
+          
+          // Cargar héroes si no están cargados
+          if (Object.keys(heroes).length === 0) {
+            await fetchHeroes();
+          }
+          
+          console.log(`✅ ${filteredData.length} partidas cargadas con filtro ${timeFilter}`);
+      
+          // Verificar amigos automáticamente siempre después de cargar partidas
+          console.log('🔄 Iniciando verificación automática de amigos...');
+          console.log('🔍 Debug - Estado antes de verificación:');
+          console.log('  - matches.length:', filteredData.length);
+          console.log('  - friends.length:', friends ? friends.length : 'undefined');
+          console.log('  - autoCheckFriends:', autoCheckFriends);
+          console.log('  - checkingFriends:', checkingFriends);
+          
+          setAutoCheckFriends(true);
+          
+          // Usar la función executeVerification global
+          
+          // Verificar si ya tenemos amigos cargados
+          if (friends && friends.length > 0) {
+            console.log('✅ Amigos ya disponibles, ejecutando verificación inmediatamente...');
+            setTimeout(() => checkAllMatchesForFriendsWithData(filteredData), 500);
+          } else {
+            console.log('⏳ Esperando a que se carguen los amigos...');
+            // Pequeña pausa para que el usuario vea que las partidas se cargaron
+            setTimeout(() => executeVerification(filteredData), 1000);
+          }
+  
+    } catch (error) {
+      console.error('❌ Error cargando partidas:', error);
+      setError(`Error cargando partidas: ${error.message}`);
+      setMatches([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Función para iniciar autenticación con Steam
+  const handleSteamAuth = () => {
+    loginWithSteam();
+  };
+
+  // Función para abrir el popup de detalles de partida
+  const openMatchPopup = (match) => {
+    setSelectedMatch(match);
+    setShowMatchPopup(true);
+    fetchMatchDetails(match.match_id);
+  };
+
+  // Función para cerrar el popup
+  const closeMatchPopup = () => {
+    setShowMatchPopup(false);
+    setSelectedMatch(null);
+    setMatchDetails(null);
+  };
+
+  // Función para abrir el perfil de Steam
+  const openSteamProfile = () => {
+    setShowSteamProfile(true);
+  };
+
+  // Función para cerrar el perfil de Steam
+  const closeSteamProfile = () => {
+    setShowSteamProfile(false);
+  };
+
+  // Función para manejar selección de período predefinido
+  const handlePeriodSelection = (period) => {
+    setTimeFilter(period);
+    setShowCalendar(false);
+    setCustomStartDate('');
+    setCustomEndDate('');
+    
+    // Cargar partidas con el período seleccionado
+    loadMatchesWithTimeFilter(period);
+  };
+
+  // Función para manejar fechas personalizadas
+  const handleCustomDateSelection = () => {
+    if (!customStartDate || !customEndDate) {
+      alert('Por favor selecciona ambas fechas (inicio y fin)');
+      return;
+    }
+    
+    const startTimestamp = Math.floor(new Date(customStartDate).getTime() / 1000);
+    const endTimestamp = Math.floor(new Date(customEndDate).getTime() / 1000);
+    
+    console.log('🗓️ Selección de fechas personalizadas:');
+    console.log('🗓️ Fecha inicio:', customStartDate, '-> Timestamp:', startTimestamp);
+    console.log('🗓️ Fecha fin:', customEndDate, '-> Timestamp:', endTimestamp);
+    
+    if (endTimestamp <= startTimestamp) {
+      alert('La fecha de fin debe ser posterior a la fecha de inicio');
+      return;
+    }
+    
+    // Validar que la fecha no sea muy antigua (OpenDota tiene límites)
+    const now = Math.floor(Date.now() / 1000);
+    const oneYearAgo = now - (365 * 24 * 60 * 60);
+    
+    if (startTimestamp < oneYearAgo) {
+      alert('La fecha de inicio no puede ser anterior a hace un año. OpenDota tiene límites de datos.');
+      return;
+    }
+    
+    setTimeFilter('custom');
+    setShowCalendar(false);
+    loadMatchesWithCustomDates(startTimestamp, endTimestamp);
+  };
+
+  // Función para cargar partidas con fechas personalizadas
+  const loadMatchesWithCustomDates = async (startTimestamp, endTimestamp) => {
+    setLoading(true);
+    setError("");
+    setMatchesLoaded(false);
+    setStatsReady(false);
+    
+    try {
+      if (!steamId) {
+        throw new Error("Steam ID no disponible");
+      }
+
+      const steam32Id = steamId;
+      
+      // La API de OpenDota solo soporta 'date' (desde), no 'date_end'
+      // Necesitamos cargar partidas desde la fecha de inicio y filtrar en el cliente
+      const API_URL = `https://api.opendota.com/api/players/${steam32Id}/matches?date=${startTimestamp}`;
+      
+      console.log('🔗 Cargando partidas con fechas personalizadas...');
+      console.log('🔗 Steam ID 32-bit:', steam32Id);
+      console.log('🔗 Fecha inicio:', new Date(startTimestamp * 1000).toLocaleString());
+      console.log('🔗 Fecha fin:', new Date(endTimestamp * 1000).toLocaleString());
+      console.log('🔗 URL:', API_URL);
+      
+      const response = await fetch(API_URL);
+      if (!response.ok) {
+        throw new Error(`Error ${response.status}: ${response.statusText}`);
+      }
+      
+      const data = await response.json();
+      
+      if (!data || data.length === 0) {
+        setError("No se encontraron partidas en el período seleccionado");
+        return;
+      }
+      
+      // Filtrar partidas que estén dentro del rango de fechas
+      const filteredData = data.filter(match => {
+        const matchTime = match.start_time;
+        return matchTime >= startTimestamp && matchTime <= endTimestamp;
+      });
+      
+      console.log(`📊 Partidas totales cargadas: ${data.length}`);
+      console.log(`📊 Partidas filtradas por fecha: ${filteredData.length}`);
+      
+      if (filteredData.length === 0) {
+        setError("No se encontraron partidas en el período específico seleccionado");
+        return;
+      }
+      
+      setMatches(filteredData);
+      setMatchesLoaded(true);
+      
+      // Cargar héroes si no están cargados
+      if (Object.keys(heroes).length === 0) {
+        await fetchHeroes();
+      }
+      
+      // Iniciar verificación automática con los datos filtrados
+      executeVerification(filteredData);
+      
+    } catch (error) {
+      console.error('Error cargando partidas:', error);
+      setError(`Error: ${error.message}`);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Función para obtener el texto del período actual
+  const getPeriodText = () => {
+    if (timeFilter === 'custom' && customStartDate && customEndDate) {
+      const startDate = new Date(customStartDate).toLocaleDateString('es-ES');
+      const endDate = new Date(customEndDate).toLocaleDateString('es-ES');
+      return `${startDate} - ${endDate}`;
+    }
+    
+    const periodNames = {
+      'day': 'Último día',
+      'week': 'Última semana', 
+      '2weeks': 'Últimas 2 semanas',
+      'month': 'Último mes',
+      '3months': 'Últimos 3 meses'
+    };
+    
+    return periodNames[timeFilter] || 'Período personalizado';
+  };
+
+  // Función para calcular el MVP de la partida
+  const calculateMVP = (players) => {
+    if (!players || players.length === 0) return null;
+    
+    let mvp = null;
+    let bestScore = -1;
+    
+    players.forEach(player => {
+      if (!player.account_id) return; // Skip bots or anonymous players
+      
+      // Calcular score basado en múltiples factores
+      const kills = player.kills || 0;
+      const deaths = player.deaths || 0;
+      const assists = player.assists || 0;
+      const netWorth = player.net_worth || 0;
+      const heroDamage = player.hero_damage || 0;
+      const towerDamage = player.tower_damage || 0;
+      const lastHits = player.last_hits || 0;
+      const gpm = player.gold_per_min || 0;
+      const xpm = player.xp_per_min || 0;
+      
+      // Fórmula de score (peso a diferentes estadísticas)
+      const kdaScore = (kills * 3) + (assists * 1.5) - (deaths * 1);
+      const economicScore = (netWorth / 1000) + (gpm / 10) + (lastHits / 2);
+      const combatScore = (heroDamage / 1000) + (towerDamage / 500);
+      const xpScore = xpm / 10;
+      
+      const totalScore = kdaScore + economicScore + combatScore + xpScore;
+      
+      if (totalScore > bestScore) {
+        bestScore = totalScore;
+        mvp = {
+          ...player,
+          mvpScore: totalScore
+        };
+      }
+    });
+    
+    return mvp;
+  };
+
+  // Función para obtener datos detallados de la partida
+  const fetchMatchDetails = async (matchId) => {
+    setLoadingMatchDetails(true);
+    try {
+      const response = await fetch(`https://api.opendota.com/api/matches/${matchId}`);
+      if (!response.ok) {
+        throw new Error('Error al obtener detalles de la partida');
+      }
+      const data = await response.json();
+      setMatchDetails(data);
+    } catch (error) {
+      console.error('Error obteniendo detalles de la partida:', error);
+      setMatchDetails(null);
+    } finally {
+      setLoadingMatchDetails(false);
+    }
+  };
+
+  return (
+    <div className="min-h-screen relative overflow-hidden">
+      {/* Fondo con imagen Radiant vs Dire */}
+      <div className="fixed inset-0 z-0">
+        {/* Imagen de fondo principal - Radiant vs Dire */}
+        <div 
+          className="absolute inset-0 bg-cover bg-center bg-no-repeat"
+          style={{
+            backgroundImage: `url('https://cdn.cloudflare.steamstatic.com/apps/dota2/images/dota_react//home/radiant_dire5.jpg')`,
+            backgroundAttachment: 'fixed',
+            backgroundSize: 'cover'
+          }}
+        ></div>
+        
+        {/* Overlays para mejorar legibilidad */}
+        <div className="absolute inset-0 bg-gradient-to-br from-slate-900/75 via-slate-800/70 to-slate-900/75"></div>
+        <div className="absolute inset-0 bg-gradient-to-t from-slate-900/80 via-transparent to-slate-900/60"></div>
+        <div className="absolute inset-0 bg-gradient-to-r from-green-900/20 via-transparent to-red-900/20"></div>
+        
+        {/* Efecto de partículas sutiles con colores Radiant/Dire */}
+        <div className="absolute inset-0 opacity-15">
+          <div className="absolute top-1/4 left-1/4 w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
+          <div className="absolute top-3/4 right-1/4 w-1 h-1 bg-red-400 rounded-full animate-pulse delay-300"></div>
+          <div className="absolute top-1/2 left-3/4 w-1.5 h-1.5 bg-yellow-400 rounded-full animate-pulse delay-700"></div>
+          <div className="absolute top-1/3 right-1/3 w-1 h-1 bg-blue-400 rounded-full animate-pulse delay-500"></div>
+          <div className="absolute bottom-1/4 left-1/2 w-1.5 h-1.5 bg-purple-400 rounded-full animate-pulse delay-1000"></div>
+        </div>
+        
+        {/* Efecto de brillo dinámico */}
+        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent animate-pulse"></div>
+      </div>
+      {/* Navbar mejorada */}
+      <nav className="relative z-10 bg-gradient-to-r from-slate-800 via-slate-900 to-slate-800 shadow-2xl border-b-4 border-gradient-to-r from-orange-500 to-red-500 backdrop-blur-md">
+        {/* Efecto de brillo superior */}
+        <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-orange-400 to-transparent"></div>
+        
+        <div className="max-w-7xl mx-auto px-6">
+          <div className="flex justify-between items-center h-20">
+            <div className="flex items-center space-x-4">
+              <div className="relative">
+                <div className="text-3xl animate-bounce">⚔️</div>
+                <div className="absolute -top-1 -right-1 w-3 h-3 bg-orange-400 rounded-full animate-pulse"></div>
+              </div>
+              <div>
+                <h1 className="text-2xl font-bold text-white drop-shadow-lg bg-gradient-to-r from-orange-400 to-red-400 bg-clip-text text-transparent">
+                  Dota 2 Matches Analyzer
+                </h1>
+                <p className="text-xs text-gray-400 -mt-1">Análisis profesional de partidas</p>
+              </div>
+            </div>
+            <div className="flex items-center space-x-6">
+              {authenticatedUser && (
+                <div className="flex items-center space-x-4">
+                  {/* Avatar con efecto hover mejorado */}
+                  <div className="relative group" onClick={openSteamProfile}>
+                    <img 
+                      src={authenticatedUser.avatar} 
+                      alt={`Avatar de ${authenticatedUser.name}`}
+                      className="w-12 h-12 rounded-full border-2 border-orange-400 shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-110 cursor-pointer"
+                    />
+                    <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-green-500 rounded-full border-2 border-slate-900 animate-pulse"></div>
+                    
+                    {/* Tooltip mejorado - posicionado abajo */}
+                    <div className="absolute top-full left-1/2 transform -translate-x-1/2 mt-3 px-3 py-2 bg-gradient-to-r from-slate-800 to-slate-900 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-all duration-300 whitespace-nowrap z-50 pointer-events-none shadow-xl border border-orange-400/30 max-w-[200px]">
+                      <div className="flex items-center gap-1">
+                        <span>👤</span>
+                        <span>Ver perfil completo</span>
+                      </div>
+                      {/* Flecha del tooltip apuntando hacia arriba */}
+                      <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-3 border-r-3 border-b-3 border-l-transparent border-r-transparent border-b-slate-900"></div>
+                    </div>
+                    
+                    {/* Overlay de hover */}
+                    <div className="absolute inset-0 rounded-full bg-gradient-to-br from-orange-400/20 to-red-500/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"></div>
+                  </div>
+                  
+                  {/* Información del usuario */}
+                  <div className="flex flex-col">
+                    <span className="text-white font-semibold text-sm">{authenticatedUser.name}</span>
+                    <span className="text-orange-300 text-xs">Steam ID: {steamId}</span>
+                  </div>
+                  
+                  {/* Botones de acción */}
+                  <div className="flex space-x-2">
+                    <button
+                      onClick={() => window.open(`https://steamcommunity.com/profiles/${steam64Id}`, '_blank')}
+                      className="px-4 py-2 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white rounded-lg text-sm font-medium transition-all duration-200 shadow-lg hover:shadow-xl hover:scale-105 flex items-center space-x-2"
+                    >
+                      <span>👤</span>
+                      <span>Perfil Steam</span>
+                    </button>
+                    
+                    <button
+                      onClick={() => {
+                        logout();
+                        setMatches([]);
+                        setMatchesLoaded(false);
+                      }}
+                      className="px-4 py-2 bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white rounded-lg text-sm font-medium transition-all duration-200 shadow-lg hover:shadow-xl hover:scale-105 flex items-center space-x-2"
+                    >
+                      <span>🚪</span>
+                      <span>Cerrar sesión</span>
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      </nav>
+
+      <div className="relative z-10 p-6 max-w-5xl mx-auto">
+        {/* Overlay que bloquea toda la interfaz durante carga de amigos */}
+      {loadingFriends && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center">
+          <div className="bg-white rounded-lg p-6 max-w-md mx-4">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="relative">
+                <div className="animate-spin rounded-full h-8 w-8 border-4 border-green-200"></div>
+                <div className="animate-spin rounded-full h-8 w-8 border-4 border-transparent border-t-green-600 border-r-green-500 absolute top-0 left-0"></div>
+              </div>
+              <div>
+                <span className="text-green-800 font-semibold text-lg block">Cargando lista de amigos...</span>
+                <span className="text-green-600 text-sm">Esto puede tomar unos segundos</span>
+              </div>
+            </div>
+            {friendsLoadingProgress.total > 0 && (
+              <div className="mb-4">
+                <div className="flex justify-between text-sm text-green-700 mb-2">
+                  <span>Amigos cargados: {friendsLoadingProgress.current} de {friendsLoadingProgress.total}</span>
+                  <span>{Math.round((friendsLoadingProgress.current / friendsLoadingProgress.total) * 100)}%</span>
+                </div>
+                <div className="w-full bg-green-100 rounded-full h-4 overflow-hidden shadow-inner">
+                  <div 
+                    className="bg-gradient-to-r from-green-500 via-green-400 to-green-600 h-4 rounded-full transition-all duration-500 ease-out relative"
+                    style={{ width: `${(friendsLoadingProgress.current / friendsLoadingProgress.total) * 100}%` }}
+                  >
+                    <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white to-transparent opacity-30 animate-pulse"></div>
+                  </div>
+                </div>
+              </div>
+            )}
+            <p className="text-sm text-gray-600 text-center">
+              Por favor espera mientras cargamos tu lista de amigos de Steam...
+            </p>
+          </div>
+        </div>
+      )}
+
+
+      {/* Información adicional del usuario */}
+      {authenticatedUser && (
+        <div className="mb-6 bg-gradient-to-r from-green-50 to-blue-50 border border-green-200 rounded-lg p-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-4">
+              <div className="text-sm text-gray-600">
+                <span className="font-medium">Steam ID:</span> {steamId}
+              </div>
+              <div className="text-sm text-gray-600">
+                <span className="font-medium">Amigos cargados:</span> {friends.length}
+                {loadingFriends && <span className="text-blue-600"> (cargando...)</span>}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Botón para cambiar período de partidas */}
+      {authenticatedUser && matchesLoaded && (
+        <div className="mb-6 bg-gray-50 border border-gray-200 rounded-lg p-4">
+          <div className="flex items-center justify-between mb-3">
+            <div>
+              <h3 className="text-lg font-semibold text-gray-800">📅 Cambiar período de partidas</h3>
+              <p className="text-sm text-gray-600">
+                Período actual: <span className="font-medium">{getPeriodText()}</span>
+              </p>
+            </div>
+            <button
+              onClick={() => {
+                setMatches([]);
+                setMatchesLoaded(false);
+                setStatsReady(false);
+                setMatchStats({ solo: { wins: 0, losses: 0 }, party: { wins: 0, losses: 0 } });
+                setFriendsInMatches({});
+                setAutoCheckFriends(false);
+                setCheckingFriends(false);
+                setLoadingProgress({ current: 0, total: 0 });
+              }}
+              className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg text-sm transition-colors"
+            >
+              🔄 Cambiar período
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Selector de tiempo para cargar partidas */}
+      {authenticatedUser && !matchesLoaded && (
+        <div className="mb-6 bg-blue-50 border border-blue-200 rounded-lg p-6">
+          <h3 className="text-lg font-semibold text-blue-800 mb-4">📅 Selecciona el período de partidas a cargar</h3>
+          <p className="text-sm text-blue-700 mb-4">
+            Elige qué período de tiempo quieres analizar para encontrar amigos en tus partidas.
+          </p>
+          
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <button
+              onClick={() => handlePeriodSelection("day")}
+              className="px-4 py-3 bg-green-500 hover:bg-green-600 text-white rounded-lg transition-colors text-center"
+            >
+              <div className="text-lg">📅</div>
+              <div className="font-medium">Último día</div>
+              <div className="text-xs opacity-90">Partidas de hoy</div>
+            </button>
+            
+            <button
+              onClick={() => handlePeriodSelection("week")}
+              className="px-4 py-3 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors text-center"
+            >
+              <div className="text-lg">📆</div>
+              <div className="font-medium">Última semana</div>
+              <div className="text-xs opacity-90">7 días</div>
+            </button>
+            
+            <button
+              onClick={() => handlePeriodSelection("2weeks")}
+              className="px-4 py-3 bg-purple-500 hover:bg-purple-600 text-white rounded-lg transition-colors text-center"
+            >
+              <div className="text-lg">📅</div>
+              <div className="font-medium">Últimas 2 semanas</div>
+              <div className="text-xs opacity-90">14 días</div>
+            </button>
+            
+            <button
+              onClick={() => handlePeriodSelection("month")}
+              className="px-4 py-3 bg-orange-500 hover:bg-orange-600 text-white rounded-lg transition-colors text-center"
+            >
+              <div className="text-lg">📊</div>
+              <div className="font-medium">Último mes</div>
+              <div className="text-xs opacity-90">30 días</div>
+            </button>
+            
+            <button
+              onClick={() => handlePeriodSelection("3months")}
+              className="px-4 py-3 bg-red-500 hover:bg-red-600 text-white rounded-lg transition-colors text-center"
+            >
+              <div className="text-lg">📅</div>
+              <div className="font-medium">Últimos 3 meses</div>
+              <div className="text-xs opacity-90">90 días</div>
+            </button>
+            
+          </div>
+          
+          {/* Selector de fecha personalizada */}
+          <div className="mt-6 border-t border-blue-200 pt-4">
+            <div className="flex items-center justify-between mb-3">
+              <h4 className="text-blue-800 font-medium flex items-center gap-2">
+                <span>🗓️</span>
+                Fechas Personalizadas
+              </h4>
+              <button
+                onClick={() => setShowCalendar(!showCalendar)}
+                className="px-3 py-1 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm transition-all duration-200"
+              >
+                {showCalendar ? 'Ocultar' : 'Mostrar'} Calendario
+              </button>
+            </div>
+            
+            {showCalendar && (
+              <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl p-6 space-y-6 border border-blue-200 shadow-lg animate-in slide-in-from-top-2 duration-300">
+                {/* Header del calendario */}
+                <div className="text-center">
+                  <h4 className="text-lg font-bold text-blue-900 mb-2 flex items-center justify-center gap-2">
+                    <span>🗓️</span>
+                    <span>Seleccionar Rango de Fechas</span>
+                  </h4>
+                  <p className="text-sm text-blue-700">
+                    Elige el período específico para analizar tus partidas
+                  </p>
+                </div>
+                
+                {/* Selectores de fecha modernos */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {/* Fecha de Inicio */}
+                  <div className="space-y-3">
+                    <label className="block text-sm font-semibold text-blue-900 flex items-center gap-2">
+                      <span className="w-2 h-2 bg-green-500 rounded-full"></span>
+                      <span>Fecha de Inicio</span>
+                    </label>
+                    <div className="relative group">
+                      <input
+                        type="date"
+                        value={customStartDate}
+                        onChange={(e) => setCustomStartDate(e.target.value)}
+                        className="w-full px-4 py-3 bg-white border-2 border-blue-200 rounded-xl text-blue-900 focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-100 transition-all duration-300 group-hover:border-blue-300 shadow-sm hover:shadow-md"
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-r from-transparent via-blue-50/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-xl pointer-events-none"></div>
+                    </div>
+                    {customStartDate && (
+                      <div className="text-xs text-blue-600 bg-blue-100 px-2 py-1 rounded-lg inline-block">
+                        📅 {new Date(customStartDate).toLocaleDateString('es-ES', { 
+                          weekday: 'long', 
+                          year: 'numeric', 
+                          month: 'long', 
+                          day: 'numeric' 
+                        })}
+                      </div>
+                    )}
+                  </div>
+                  
+                  {/* Fecha de Fin */}
+                  <div className="space-y-3">
+                    <label className="block text-sm font-semibold text-blue-900 flex items-center gap-2">
+                      <span className="w-2 h-2 bg-red-500 rounded-full"></span>
+                      <span>Fecha de Fin</span>
+                    </label>
+                    <div className="relative group">
+                      <input
+                        type="date"
+                        value={customEndDate}
+                        onChange={(e) => setCustomEndDate(e.target.value)}
+                        className="w-full px-4 py-3 bg-white border-2 border-blue-200 rounded-xl text-blue-900 focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-100 transition-all duration-300 group-hover:border-blue-300 shadow-sm hover:shadow-md"
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-r from-transparent via-blue-50/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-xl pointer-events-none"></div>
+                    </div>
+                    {customEndDate && (
+                      <div className="text-xs text-blue-600 bg-blue-100 px-2 py-1 rounded-lg inline-block">
+                        📅 {new Date(customEndDate).toLocaleDateString('es-ES', { 
+                          weekday: 'long', 
+                          year: 'numeric', 
+                          month: 'long', 
+                          day: 'numeric' 
+                        })}
+                      </div>
+                    )}
+                  </div>
+                </div>
+                
+                {/* Rango seleccionado */}
+                {customStartDate && customEndDate && (
+                  <div className="bg-gradient-to-r from-green-100 to-blue-100 border border-green-200 rounded-xl p-4 animate-in fade-in duration-500">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
+                        <span className="font-semibold text-green-800">Período Seleccionado:</span>
+                      </div>
+                      <div className="text-sm text-green-700 bg-white px-3 py-1 rounded-lg shadow-sm">
+                        {(() => {
+                          const start = new Date(customStartDate);
+                          const end = new Date(customEndDate);
+                          const diffTime = Math.abs(end - start);
+                          const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+                          return `${diffDays} días`;
+                        })()}
+                      </div>
+                    </div>
+                    <div className="mt-2 text-sm text-green-700">
+                      <span className="font-medium">Desde:</span> {new Date(customStartDate).toLocaleDateString('es-ES')} • 
+                      <span className="font-medium ml-2">Hasta:</span> {new Date(customEndDate).toLocaleDateString('es-ES')}
+                    </div>
+                  </div>
+                )}
+                
+                {/* Botones de acción */}
+                <div className="flex flex-col sm:flex-row gap-3 justify-end">
+                  <button
+                    onClick={() => {
+                      setCustomStartDate('');
+                      setCustomEndDate('');
+                    }}
+                    className="px-4 py-2 bg-gray-500 hover:bg-gray-600 text-white rounded-lg font-medium transition-all duration-200 flex items-center justify-center gap-2"
+                  >
+                    <span>🗑️</span>
+                    <span>Limpiar</span>
+                  </button>
+                  <button
+                    onClick={handleCustomDateSelection}
+                    disabled={!customStartDate || !customEndDate}
+                    className="px-6 py-3 bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 disabled:from-gray-400 disabled:to-gray-500 text-white rounded-xl font-bold transition-all duration-300 flex items-center gap-2 transform hover:scale-105 disabled:scale-100 disabled:cursor-not-allowed shadow-lg hover:shadow-xl"
+                  >
+                    <span className="text-lg">🔍</span>
+                    <span>Cargar Partidas</span>
+                    <div className="w-2 h-2 bg-white rounded-full animate-pulse"></div>
+                  </button>
+                </div>
+                
+                {/* Efectos de fondo */}
+                <div className="absolute -z-10 top-4 left-4 w-8 h-8 bg-blue-200 rounded-full opacity-20 animate-pulse"></div>
+                <div className="absolute -z-10 bottom-4 right-4 w-6 h-6 bg-indigo-200 rounded-full opacity-20 animate-pulse delay-1000"></div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Pantalla de login moderna */}
+      {!authenticatedUser && (
+        <div className="relative z-10 flex items-center justify-center min-h-[70vh]">
+          <div className="w-full max-w-md mx-auto">
+            {/* Card principal de login */}
+            <div className="bg-gradient-to-br from-slate-800/95 via-slate-900/95 to-slate-800/95 backdrop-blur-lg border border-orange-400/30 rounded-2xl p-8 shadow-2xl">
+              {/* Efecto de brillo superior */}
+              <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-orange-400 to-transparent rounded-t-2xl"></div>
+              
+              {/* Header */}
+              <div className="text-center mb-8">
+                <div className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-br from-orange-400 to-red-500 rounded-full mb-4 shadow-xl">
+                  <span className="text-3xl">⚔️</span>
+                </div>
+                <h1 className="text-3xl font-bold text-white mb-2 bg-gradient-to-r from-orange-400 to-red-400 bg-clip-text text-transparent">
+                  Dota Matches
+                </h1>
+                <p className="text-gray-300 text-lg">
+                  Análisis profesional de partidas
+                </p>
+              </div>
+              
+              {/* Descripción */}
+              <div className="mb-8">
+                <div className="bg-gradient-to-r from-blue-500/20 to-purple-500/20 border border-blue-400/30 rounded-xl p-4 mb-4">
+                  <h3 className="text-white font-semibold mb-2 flex items-center gap-2">
+                    <span>🎯</span>
+                    ¿Qué puedes hacer?
+                  </h3>
+                  <ul className="text-gray-300 text-sm space-y-1">
+                    <li>• Analizar tus partidas de Dota 2</li>
+                    <li>• Detectar amigos en tus juegos</li>
+                    <li>• Ver estadísticas detalladas</li>
+                    <li>• Identificar patrones de juego</li>
+                  </ul>
+                </div>
+                
+                <div className="bg-gradient-to-r from-green-500/20 to-emerald-500/20 border border-green-400/30 rounded-xl p-4">
+                  <h3 className="text-white font-semibold mb-2 flex items-center gap-2">
+                    <span>🔒</span>
+                    Privacidad garantizada
+                  </h3>
+                  <p className="text-gray-300 text-sm">
+                    Solo accedemos a tu información pública de Steam y partidas de Dota 2. 
+                    Tus datos están seguros y no se comparten con terceros.
+                  </p>
+                </div>
+              </div>
+              
+              {/* Botón de login */}
+              <div className="space-y-4">
+                <button
+                  onClick={handleSteamAuth}
+                  disabled={authLoading}
+                  className="w-full group relative overflow-hidden bg-gradient-to-r from-blue-600 via-blue-700 to-blue-800 hover:from-blue-700 hover:via-blue-800 hover:to-blue-900 disabled:from-gray-600 disabled:to-gray-700 text-white font-bold py-4 px-6 rounded-xl transition-all duration-300 transform hover:scale-105 hover:shadow-2xl disabled:scale-100 disabled:shadow-none"
+                >
+                  {/* Efecto de brillo animado */}
+                  <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -skew-x-12 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700"></div>
+                  
+                  <div className="relative flex items-center justify-center gap-3">
+                    {authLoading ? (
+                      <>
+                        <div className="w-6 h-6 border-3 border-white border-t-transparent rounded-full animate-spin"></div>
+                        <span className="text-lg">Autenticando con Steam...</span>
+                      </>
+                    ) : (
+                      <>
+                        <div className="w-8 h-8 bg-gradient-to-br from-white to-gray-200 rounded-full flex items-center justify-center">
+                          <span className="text-blue-600 font-bold text-lg">S</span>
+                        </div>
+                        <div className="text-left">
+                          <div className="text-lg">Iniciar sesión con Steam</div>
+                          <div className="text-blue-200 text-sm">Acceso rápido y seguro</div>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                </button>
+                
+                {authError && (
+                  <div className="bg-red-500/20 border border-red-400/50 rounded-xl p-4">
+                    <div className="flex items-center gap-2 text-red-300">
+                      <span>⚠️</span>
+                      <span className="font-medium">Error de autenticación</span>
+                    </div>
+                    <p className="text-red-200 text-sm mt-1">{authError}</p>
+                  </div>
+                )}
+              </div>
+              
+              {/* Footer */}
+              <div className="mt-8 pt-6 border-t border-gray-600/50">
+                <div className="text-center">
+                  <p className="text-gray-400 text-sm">
+                    Al iniciar sesión, aceptas nuestros términos de servicio
+                  </p>
+                  <div className="flex items-center justify-center gap-4 mt-3 text-xs text-gray-500">
+                    <span>🔐 Seguro</span>
+                    <span>⚡ Rápido</span>
+                    <span>🎮 Oficial</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            {/* Efectos de fondo adicionales */}
+            <div className="absolute -z-10 top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2">
+              <div className="w-96 h-96 bg-gradient-to-r from-orange-500/10 to-red-500/10 rounded-full blur-3xl animate-pulse"></div>
+            </div>
+            <div className="absolute -z-10 top-1/3 right-1/4">
+              <div className="w-64 h-64 bg-gradient-to-r from-blue-500/10 to-purple-500/10 rounded-full blur-2xl animate-pulse delay-1000"></div>
+            </div>
+          </div>
+        </div>
+      )}
+
+
+
+      {/* Loading principal mejorado */}
+      {loading && (
+        <div className="relative z-10 flex items-center justify-center min-h-[50vh]">
+          <div className="bg-gradient-to-br from-slate-800/95 via-slate-900/95 to-slate-800/95 backdrop-blur-lg border border-orange-400/30 rounded-2xl p-8 shadow-2xl">
+            {/* Efecto de brillo superior */}
+            <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-orange-400 to-transparent rounded-t-2xl"></div>
+            
+            <div className="text-center">
+              {/* Spinner principal mejorado */}
+              <div className="relative mx-auto mb-6">
+                {/* Círculo exterior */}
+                <div className="animate-spin rounded-full h-20 w-20 border-4 border-orange-200/30 mx-auto"></div>
+                {/* Círculo interior */}
+                <div className="animate-spin rounded-full h-20 w-20 border-4 border-transparent border-t-orange-500 border-r-red-500 absolute top-0 left-0" style={{animationDirection: 'reverse', animationDuration: '1.5s'}}></div>
+                {/* Círculo central */}
+                <div className="animate-spin rounded-full h-12 w-12 border-3 border-transparent border-t-blue-400 border-r-purple-400 absolute top-4 left-4" style={{animationDuration: '2s'}}></div>
+                {/* Punto central */}
+                <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-3 h-3 bg-gradient-to-r from-orange-400 to-red-500 rounded-full animate-pulse"></div>
+              </div>
+              
+              {/* Texto de carga */}
+              <h3 className="text-xl font-bold text-white mb-2 bg-gradient-to-r from-orange-400 to-red-400 bg-clip-text text-transparent">
+                Cargando Partidas
+              </h3>
+              <p className="text-gray-300 text-sm mb-4">
+                Obteniendo tus partidas de Dota 2 desde OpenDota...
+              </p>
+              
+              {/* Barra de progreso animada */}
+              <div className="w-full bg-slate-700 rounded-full h-2 overflow-hidden">
+                <div className="h-full bg-gradient-to-r from-orange-400 via-red-500 to-purple-500 rounded-full animate-pulse" style={{width: '100%'}}></div>
+              </div>
+              
+              {/* Efectos de fondo */}
+              <div className="absolute -z-10 top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2">
+                <div className="w-32 h-32 bg-gradient-to-r from-orange-500/20 to-red-500/20 rounded-full blur-2xl animate-pulse"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Error */}
+      {error && (
+        <div className="text-center py-8">
+          <div className="text-red-500 text-lg mb-2">⚠️</div>
+          <p className="text-gray-600">{error}</p>
+        </div>
+      )}
+
+      {/* Mensaje cuando no hay partidas */}
+      {matchesLoaded && matches.length === 0 && (
+        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6 text-center">
+          <div className="text-yellow-500 text-4xl mb-4">📊</div>
+          <h3 className="text-lg font-semibold text-yellow-800 mb-2">No se encontraron partidas</h3>
+          <p className="text-yellow-700 mb-4">
+            No se encontraron partidas para el período seleccionado ({timeFilter}).
+          </p>
+          <div className="text-sm text-yellow-600 mb-4">
+            <p>• Verifica que tengas partidas ranked en ese período</p>
+            <p>• Intenta con un período más amplio (mes, 2 meses, etc.)</p>
+            <p>• Asegúrate de que tu perfil de Steam sea público</p>
+          </div>
+          <div className="flex gap-2 justify-center">
+            <button
+              onClick={() => loadMatchesWithTimeFilter("all")}
+              className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg text-sm"
+            >
+              🔍 Cargar todas las partidas
+            </button>
+            <button
+              onClick={() => {
+                console.log('🔍 Debug - Steam ID actual:', steamId);
+                console.log('🔍 Debug - Steam ID 64-bit:', steam64Id);
+                console.log('🔍 Debug - Usuario autenticado:', authenticatedUser);
+              }}
+              className="px-4 py-2 bg-gray-500 hover:bg-gray-600 text-white rounded-lg text-sm"
+            >
+              🔧 Debug Info
+            </button>
+            <button
+              onClick={() => {
+                const testUrl = `https://api.opendota.com/api/players/${steamId}/matches?lobby_type=7`;
+                console.log('🧪 Probando API de OpenDota directamente...');
+                console.log('🧪 URL de prueba:', testUrl);
+                fetch(testUrl)
+                  .then(response => response.json())
+                  .then(data => {
+                    console.log('🧪 Respuesta de prueba:', data);
+                    if (data && data.length > 0) {
+                      console.log('✅ API funciona, se encontraron partidas:', data.length);
+                    } else {
+                      console.log('⚠️ API funciona pero no hay partidas');
+                    }
+                  })
+                  .catch(error => {
+                    console.error('❌ Error en prueba de API:', error);
+                  });
+              }}
+              className="px-4 py-2 bg-purple-500 hover:bg-purple-600 text-white rounded-lg text-sm"
+            >
+              🧪 Probar API
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Indicador de verificación automática */}
+      {autoCheckFriends && (
+        <div className="mb-6 bg-gradient-to-r from-purple-50 to-blue-50 border border-purple-200 rounded-lg p-4 shadow-sm">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-3">
+              <div className="relative">
+                <div className="animate-spin rounded-full h-5 w-5 border-2 border-purple-200"></div>
+                <div className="animate-spin rounded-full h-5 w-5 border-2 border-transparent border-t-purple-600 border-r-purple-500 absolute top-0 left-0"></div>
+              </div>
+              <div>
+                <span className="text-purple-800 font-semibold block">Análisis automático en progreso...</span>
+                <span className="text-purple-600 text-sm">Identificando compañeros de juego en tus partidas</span>
+              </div>
+            </div>
+            <span className="text-purple-600 text-sm font-medium">
+              {loadingProgress.total > 0 ? `${loadingProgress.current}/${loadingProgress.total}` : 'Iniciando...'}
+            </span>
+          </div>
+          <div className="w-full bg-purple-100 rounded-full h-4 overflow-hidden shadow-inner">
+            <div 
+              className="bg-gradient-to-r from-purple-500 via-purple-400 to-purple-600 h-4 rounded-full transition-all duration-500 ease-out relative"
+              style={{ 
+                width: loadingProgress.total > 0 ? `${(loadingProgress.current / loadingProgress.total) * 100}%` : '100%' 
+              }}
+            >
+              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white to-transparent opacity-30 animate-pulse"></div>
+            </div>
+          </div>
+          {loadingProgress.total > 0 && (
+            <div className="text-center text-purple-600 text-sm mt-2">
+              {Math.round((loadingProgress.current / loadingProgress.total) * 100)}% completado
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Indicador de verificación manual automática */}
+      {checkingFriends && !autoCheckFriends && (
+        <div className="mb-6 bg-blue-50 border border-blue-200 rounded-lg p-4">
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-blue-800 font-medium">Verificando amigos en partidas...</span>
+            <span className="text-blue-600 text-sm">
+              {loadingProgress.total > 0 ? `${loadingProgress.current}/${loadingProgress.total}` : 'Iniciando...'}
+            </span>
+          </div>
+          {loadingProgress.total > 0 && (
+            <div className="w-full">
+              <div className="flex justify-between text-sm text-blue-700 mb-1">
+                <span>Progreso: {loadingProgress.current} de {loadingProgress.total} partidas</span>
+                <span>{Math.round((loadingProgress.current / loadingProgress.total) * 100)}%</span>
+              </div>
+              <div className="w-full bg-blue-200 rounded-full h-2">
+                <div 
+                  className="bg-blue-600 h-2 rounded-full transition-all duration-300 ease-out"
+                  style={{ width: `${(loadingProgress.current / loadingProgress.total) * 100}%` }}
+                ></div>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Botón manual para verificar amigos (solo si no se está ejecutando automáticamente) */}
+      {matches.length > 0 && !autoCheckFriends && !checkingFriends && (
+        <div className="mb-6 bg-green-50 border border-green-200 rounded-lg p-4">
+          <h3 className="text-lg font-semibold text-green-800 mb-3">🔍 Análisis de compañeros de juego</h3>
+          <p className="text-sm text-green-700 mb-4">
+            Analiza tus partidas para identificar cuando jugaste con amigos de tu lista de Steam, incluso en partidas marcadas como "solo".
+          </p>
+          <div className="space-y-3">
+            <div className="flex gap-2">
+              <button
+                onClick={checkAllMatchesForFriends}
+                disabled={checkingFriends || !friends || friends.length === 0}
+                className="px-4 py-2 bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white rounded-lg text-sm flex items-center gap-2"
+              >
+                {checkingFriends ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
+                    Verificando...
+                  </>
+                ) : (
+                  <>
+                    🔍 Analizar compañeros de juego
+                  </>
+                )}
+              </button>
+              
+              {Object.keys(friendsInMatches).length > 0 && (
+                <div className="text-sm text-green-700 flex items-center bg-green-100 px-3 py-2 rounded-lg">
+                  ✅ Compañeros detectados en {Object.keys(friendsInMatches).length} partidas
+                </div>
+              )}
+            </div>
+            
+            {/* Barra de progreso */}
+            {checkingFriends && loadingProgress.total > 0 && (
+              <div className="w-full">
+                <div className="flex justify-between text-sm text-green-700 mb-1">
+                  <span>Progreso: {loadingProgress.current} de {loadingProgress.total} partidas</span>
+                  <span>{Math.round((loadingProgress.current / loadingProgress.total) * 100)}%</span>
+                </div>
+                <div className="w-full bg-green-200 rounded-full h-2">
+                  <div 
+                    className="bg-green-600 h-2 rounded-full transition-all duration-300 ease-out"
+                    style={{ width: `${(loadingProgress.current / loadingProgress.total) * 100}%` }}
+                  ></div>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Resultados de verificación automática */}
+      {Object.keys(friendsInMatches).length > 0 && (
+        <div className="mb-6 bg-green-50 border border-green-200 rounded-lg p-4">
+          <div className="flex items-center gap-2 mb-2">
+            <span className="text-green-600 text-lg">✅</span>
+            <span className="text-green-800 font-medium">
+              Amigos encontrados en {Object.keys(friendsInMatches).length} partidas
+            </span>
+          </div>
+          <p className="text-sm text-green-700">
+            {autoCheckFriends ? 'La verificación automática ha encontrado amigos en tus partidas.' : 'La verificación manual ha encontrado amigos en tus partidas.'}
+          </p>
+        </div>
+      )}
+
+      {/* Partidas cargadas */}
+      {matches.length > 0 && (
+        <div className="bg-white p-4 rounded-lg shadow-md">
+          <h2 className="text-lg font-semibold mb-3">
+            Partidas cargadas: {matches.length} (Filtro: {timeFilter})
+          </h2>
+          
+          {/* Mensaje de espera para estadísticas */}
+          {!statsReady && matches.length > 0 && (
+            <div className="mb-6 bg-gradient-to-r from-yellow-50 to-orange-50 border border-yellow-200 rounded-lg p-4 shadow-sm">
+              <div className="flex items-center gap-3">
+                <div className="relative">
+                  <div className="animate-spin rounded-full h-6 w-6 border-3 border-yellow-200"></div>
+                  <div className="animate-spin rounded-full h-6 w-6 border-3 border-transparent border-t-yellow-600 border-r-orange-500 absolute top-0 left-0"></div>
+                </div>
+                <div>
+                <span className="text-yellow-800 font-semibold block">Procesando datos...</span>
+                <span className="text-yellow-600 text-sm">Las estadísticas se mostrarán después de completar el análisis</span>
+                </div>
+              </div>
+              <div className="w-full bg-yellow-100 rounded-full h-3 mt-3 overflow-hidden shadow-inner">
+                <div className="bg-gradient-to-r from-yellow-500 via-yellow-400 to-orange-500 h-3 rounded-full animate-pulse relative" style={{ width: '100%' }}>
+                  <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white to-transparent opacity-30 animate-pulse"></div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Estadísticas de partidas - Solo mostrar después de verificación de amigos */}
+          {statsReady && !checkingFriends && !autoCheckFriends && (matchStats.solo.wins + matchStats.solo.losses + matchStats.party.wins + matchStats.party.losses) > 0 && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+              {/* Estadísticas Solo */}
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <h3 className="font-semibold text-blue-800 mb-3 flex items-center gap-2">
+                  🎯 Partidas Solo
+                  <span className="text-sm font-normal text-blue-600">
+                    ({matchStats.solo.wins + matchStats.solo.losses} partidas)
+                  </span>
+                </h3>
+                <div className="space-y-2">
+                  <div className="flex justify-between items-center">
+                    <span className="text-green-700 font-medium">✅ Victorias:</span>
+                    <span className="text-green-800 font-bold">{matchStats.solo.wins}</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-red-700 font-medium">❌ Derrotas:</span>
+                    <span className="text-red-800 font-bold">{matchStats.solo.losses}</span>
+                  </div>
+                  <div className="border-t border-blue-200 pt-2">
+                    <div className="flex justify-between items-center">
+                      <span className="text-blue-800 font-semibold">📊 Win Rate:</span>
+                      <span className="text-blue-900 font-bold text-lg">
+                        {matchStats.solo.wins + matchStats.solo.losses > 0 
+                          ? `${Math.round((matchStats.solo.wins / (matchStats.solo.wins + matchStats.solo.losses)) * 100)}%`
+                          : '0%'
+                        }
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Estadísticas Party */}
+              <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
+                <h3 className="font-semibold text-purple-800 mb-3 flex items-center gap-2">
+                  👥 Partidas en Grupo
+                  <span className="text-sm font-normal text-purple-600">
+                    ({matchStats.party.wins + matchStats.party.losses} partidas)
+                  </span>
+                </h3>
+                <div className="space-y-2">
+                  <div className="flex justify-between items-center">
+                    <span className="text-green-700 font-medium">✅ Victorias:</span>
+                    <span className="text-green-800 font-bold">{matchStats.party.wins}</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-red-700 font-medium">❌ Derrotas:</span>
+                    <span className="text-red-800 font-bold">{matchStats.party.losses}</span>
+                  </div>
+                  <div className="border-t border-purple-200 pt-2">
+                    <div className="flex justify-between items-center">
+                      <span className="text-purple-800 font-semibold">📊 Win Rate:</span>
+                      <span className="text-purple-900 font-bold text-lg">
+                        {matchStats.party.wins + matchStats.party.losses > 0 
+                          ? `${Math.round((matchStats.party.wins / (matchStats.party.wins + matchStats.party.losses)) * 100)}%`
+                          : '0%'
+                        }
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+
+          <div className="space-y-3">
+            {matches.map((match) => (
+              <div 
+                key={match.match_id} 
+                onClick={() => openMatchPopup(match)}
+                className="bg-gradient-to-br from-slate-800/90 to-slate-900/90 backdrop-blur-sm border border-orange-400/30 rounded-lg p-4 shadow-xl hover:shadow-2xl transition-all duration-500 hover:scale-[1.02] hover:border-orange-400 cursor-pointer group"
+              >
+                <div className="flex justify-between items-start mb-2">
+                  <div className="flex items-center space-x-3">
+                    <span className="font-medium text-lg text-white">#{match.match_id}</span>
+                    <span className="text-xs text-orange-300 bg-orange-500/20 px-2 py-1 rounded-full border border-orange-400/30">Click para detalles</span>
+                    <span className={`px-3 py-1 rounded-full text-sm font-semibold shadow-sm ${
+                      match.radiant_win ? 'bg-gradient-to-r from-green-100 to-green-200 text-green-800 border border-green-300' : 'bg-gradient-to-r from-red-100 to-red-200 text-red-800 border border-red-300'
+                    }`}>
+                      {match.radiant_win ? '🏆 Victoria' : '💀 Derrota'}
+                    </span>
+                  </div>
+                  <span className="text-sm text-gray-300">
+                    {new Date(match.start_time * 1000).toLocaleDateString('es-ES')}
+                  </span>
+                </div>
+                
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                  <div>
+                    <span className="font-medium text-orange-300">K/D/A:</span>
+                    <span className="ml-1 text-white">{match.kills}/{match.deaths}/{match.assists}</span>
+                  </div>
+                  <div>
+                    <span className="font-medium text-orange-300">Duración:</span>
+                    <span className="ml-1 text-white">{Math.floor(match.duration / 60)} min</span>
+                  </div>
+                  <div>
+                    <div className="flex items-center space-x-2">
+                      <span className={`px-3 py-1 rounded-full text-xs font-semibold shadow-sm ${
+                        getPartySize(match) > 1 ? 'bg-gradient-to-r from-blue-500/20 to-blue-600/20 text-blue-300 border border-blue-400/50' : 'bg-gradient-to-r from-gray-500/20 to-gray-600/20 text-gray-300 border border-gray-400/50'
+                      }`}>
+                        {getPartySize(match) > 1 ? '👥 Party' : '👤 Solo'} ({getPartySize(match)})
+                      </span>
+                      {friendsInMatches[match.match_id] && friendsInMatches[match.match_id].length > 0 && (
+                        <span className="px-2 py-1 rounded-full bg-gradient-to-r from-green-500/20 to-green-600/20 text-green-300 text-xs font-semibold border border-green-400/50 shadow-sm">
+                          +{friendsInMatches[match.match_id].length} amigos
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <span className="font-medium text-orange-300">Héroe:</span>
+                    <div className="flex items-center space-x-2">
+                      {match.hero_id && (
+                        <img 
+                          src={getHeroImageUrl(match.hero_id)}
+                          alt={`${heroes[match.hero_id] || match.hero_id}`}
+                          className="w-16 h-20 object-cover rounded-lg border-2 border-orange-400/50 shadow-lg hover:shadow-xl transition-all duration-300 hover:border-orange-400 group-hover:scale-105"
+                          onError={(e) => {
+                            e.target.style.display = 'none';
+                          }}
+                        />
+                      )}
+                      <span className="text-white">
+                        {heroes[match.hero_id] || `ID: ${match.hero_id}`}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+                
+                {/* Mostrar amigos encontrados en esta partida */}
+                {friendsInMatches[match.match_id] && friendsInMatches[match.match_id].length > 0 && (
+                  <div className="mt-3 pt-3 border-t border-orange-400/30">
+                    <div className="text-sm font-medium text-green-300 mb-2">
+                      👥 Compañeros detectados:
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {friendsInMatches[match.match_id].map((friend, index) => (
+                        <div key={index} className="bg-gradient-to-r from-green-500/20 to-green-600/20 text-green-300 px-2 py-1 rounded border border-green-400/50 text-xs flex items-center space-x-1 backdrop-blur-sm">
+                          {friend.hero_id && (
+                            <img 
+                              src={getHeroImageUrl(friend.hero_id)}
+                              alt={`${heroes[friend.hero_id] || friend.hero_id}`}
+                              className="w-8 h-10 object-cover rounded border-2 border-green-400/50 shadow-sm"
+                              onError={(e) => {
+                                e.target.style.display = 'none';
+                              }}
+                            />
+                          )}
+                          <span>{friend.personaname}</span>
+                          {friend.hero_id && (
+                            <span className="ml-1 text-green-400">
+                              ({heroes[friend.hero_id] || `ID: ${friend.hero_id}`})
+                            </span>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Popup de detalles de partida */}
+      {showMatchPopup && selectedMatch && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-2xl">
+            {/* Header del popup */}
+            <div className="sticky top-0 bg-gradient-to-r from-blue-600 to-purple-600 text-white p-4 rounded-t-lg">
+              <div className="flex justify-between items-center">
+                <h2 className="text-xl font-bold">Detalles de la partida</h2>
+                <button
+                  onClick={closeMatchPopup}
+                  className="text-white hover:text-gray-200 text-2xl font-bold"
+                >
+                  ×
+                </button>
+              </div>
+            </div>
+
+            {/* Contenido del popup */}
+            <div className="p-6">
+              {/* Información básica */}
+              <div className="grid grid-cols-2 gap-4 mb-6">
+                <div className="bg-gray-50 rounded-lg p-4">
+                  <h3 className="font-semibold text-gray-800 mb-2">📊 Información básica</h3>
+                  <div className="space-y-2 text-sm">
+                    <div><span className="font-medium">ID de partida:</span> {selectedMatch.match_id}</div>
+                    <div><span className="font-medium">Fecha:</span> {new Date(selectedMatch.start_time * 1000).toLocaleString('es-ES')}</div>
+                    <div><span className="font-medium">Duración:</span> {Math.floor(selectedMatch.duration / 60)} minutos</div>
+                    <div><span className="font-medium">Resultado:</span> 
+                      <span className={`ml-2 px-2 py-1 rounded-full text-xs font-semibold ${
+                        selectedMatch.radiant_win ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                      }`}>
+                        {selectedMatch.radiant_win ? '🏆 Victoria' : '💀 Derrota'}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-gray-50 rounded-lg p-4">
+                  <h3 className="font-semibold text-gray-800 mb-2">👥 Composición del equipo</h3>
+                  <div className="space-y-2 text-sm">
+                    <div><span className="font-medium">Party Size:</span> 
+                      <span className={`ml-2 px-2 py-1 rounded-full text-xs font-semibold ${
+                        getPartySize(selectedMatch) > 1 ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-800'
+                      }`}>
+                        {getPartySize(selectedMatch) > 1 ? '👥 Party' : '👤 Solo'} ({getPartySize(selectedMatch)})
+                      </span>
+                    </div>
+                    {friendsInMatches[selectedMatch.match_id] && friendsInMatches[selectedMatch.match_id].length > 0 && (
+                      <div><span className="font-medium">Amigos detectados:</span> {friendsInMatches[selectedMatch.match_id].length}</div>
+                    )}
+                    <div><span className="font-medium">Tipo de partida:</span> 
+                      <span className="ml-2 px-2 py-1 rounded-full text-xs bg-purple-100 text-purple-800">
+                        {selectedMatch.lobby_type === 7 ? '🏆 Ranked' : '🎮 Normal'}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Héroe jugado */}
+              <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg p-4 mb-6">
+                <h3 className="font-semibold text-gray-800 mb-3">🦸 Héroe jugado</h3>
+                <div className="flex items-center space-x-4">
+                  {selectedMatch.hero_id && (
+                    <img 
+                      src={getHeroImageUrl(selectedMatch.hero_id)}
+                      alt={`${heroes[selectedMatch.hero_id] || selectedMatch.hero_id}`}
+                      className="w-20 h-24 object-cover rounded-lg border-2 border-gray-300 shadow-md"
+                      onError={(e) => {
+                        e.target.style.display = 'none';
+                      }}
+                    />
+                  )}
+                  <div>
+                    <h4 className="text-xl font-bold text-gray-800">
+                      {heroes[selectedMatch.hero_id] || `Héroe ID: ${selectedMatch.hero_id}`}
+                    </h4>
+                    <p className="text-gray-600">Tu héroe en esta partida</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Amigos encontrados */}
+              {friendsInMatches[selectedMatch.match_id] && friendsInMatches[selectedMatch.match_id].length > 0 && (
+                <div className="bg-green-50 rounded-lg p-4 mb-6">
+                  <h3 className="font-semibold text-green-800 mb-3">👫 Compañeros de juego detectados</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    {friendsInMatches[selectedMatch.match_id].map((friend, index) => (
+                      <div key={index} className="bg-white rounded-lg p-3 shadow-sm border border-green-200">
+                        <div className="flex items-center space-x-3">
+                          {friend.hero_id && (
+                            <img 
+                              src={getHeroImageUrl(friend.hero_id)}
+                              alt={`${heroes[friend.hero_id] || friend.hero_id}`}
+                              className="w-8 h-10 object-cover rounded border border-green-300"
+                              onError={(e) => {
+                                e.target.style.display = 'none';
+                              }}
+                            />
+                          )}
+                          <div>
+                            <div className="font-medium text-green-800">{friend.personaname}</div>
+                            <div className="text-sm text-green-600">
+                              {heroes[friend.hero_id] || `Héroe ID: ${friend.hero_id}`}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* MVP de la partida */}
+              {matchDetails && matchDetails.players && (() => {
+                const mvp = calculateMVP(matchDetails.players);
+                const currentPlayer = matchDetails.players.find(player => 
+                  player.account_id && player.account_id.toString() === steamId
+                );
+                const isCurrentPlayerMVP = mvp && currentPlayer && mvp.account_id === currentPlayer.account_id;
+                
+                return mvp ? (
+                  <div className="bg-gradient-to-r from-yellow-50 to-orange-50 border border-yellow-300 rounded-lg p-4 mb-6">
+                    <h3 className="font-semibold text-yellow-800 mb-3 flex items-center gap-2">
+                      <span className="text-2xl">🏆</span>
+                      MVP de la Partida
+                      {isCurrentPlayerMVP && (
+                        <span className="px-2 py-1 bg-gradient-to-r from-yellow-400 to-orange-400 text-yellow-900 text-xs font-bold rounded-full animate-pulse">
+                          ¡ERES TÚ!
+                        </span>
+                      )}
+                    </h3>
+                    <div className="bg-white rounded-lg p-4 shadow-sm">
+                      <div className="flex items-center space-x-4">
+                        {mvp.hero_id && (
+                          <img 
+                            src={getHeroImageUrl(mvp.hero_id)}
+                            alt={`${heroes[mvp.hero_id] || mvp.hero_id}`}
+                            className="w-16 h-20 object-cover rounded-lg border-2 border-yellow-400 shadow-md"
+                            onError={(e) => {
+                              e.target.style.display = 'none';
+                            }}
+                          />
+                        )}
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-2">
+                            <h4 className="text-lg font-bold text-yellow-800">
+                              {heroes[mvp.hero_id] || `Héroe ID: ${mvp.hero_id}`}
+                            </h4>
+                            <span className="px-2 py-1 bg-gradient-to-r from-yellow-400 to-orange-400 text-yellow-900 text-xs font-bold rounded-full">
+                              Score: {Math.round(mvp.mvpScore)}
+                            </span>
+                          </div>
+                          <div className="grid grid-cols-3 gap-4 text-sm mb-3">
+                            <div className="text-center">
+                              <div className="font-bold text-green-600">{mvp.kills || 0}</div>
+                              <div className="text-gray-600">Kills</div>
+                            </div>
+                            <div className="text-center">
+                              <div className="font-bold text-red-600">{mvp.deaths || 0}</div>
+                              <div className="text-gray-600">Deaths</div>
+                            </div>
+                            <div className="text-center">
+                              <div className="font-bold text-blue-600">{mvp.assists || 0}</div>
+                              <div className="text-gray-600">Assists</div>
+                            </div>
+                          </div>
+                          
+                          {/* Explicación del MVP */}
+                          <div className="bg-gradient-to-r from-yellow-100 to-orange-100 rounded-lg p-3 border border-yellow-300">
+                            <div className="text-xs text-yellow-800">
+                              <span className="font-semibold">¿Por qué es MVP?</span>
+                              <div className="mt-1 space-y-1">
+                                {(() => {
+                                  const reasons = [];
+                                  const kills = mvp.kills || 0;
+                                  const assists = mvp.assists || 0;
+                                  const deaths = mvp.deaths || 0;
+                                  const netWorth = mvp.net_worth || 0;
+                                  const heroDamage = mvp.hero_damage || 0;
+                                  const towerDamage = mvp.tower_damage || 0;
+                                  const lastHits = mvp.last_hits || 0;
+                                  
+                                  if (kills >= 10) reasons.push("🔥 Excelente cantidad de kills");
+                                  if (assists >= 15) reasons.push("🤝 Gran apoyo al equipo");
+                                  if (deaths <= 3) reasons.push("🛡️ Pocas muertes (juego seguro)");
+                                  if (netWorth >= 15000) reasons.push("💰 Economía superior");
+                                  if (heroDamage >= 20000) reasons.push("⚔️ Daño masivo a héroes");
+                                  if (towerDamage >= 5000) reasons.push("🏰 Destrucción de torres");
+                                  if (lastHits >= 150) reasons.push("🎯 Farming eficiente");
+                                  
+                                  if (reasons.length === 0) {
+                                    reasons.push("📊 Mejor rendimiento general");
+                                  }
+                                  
+                                  return reasons.slice(0, 3).map((reason, index) => (
+                                    <div key={index} className="flex items-center gap-1">
+                                      {reason}
+                                    </div>
+                                  ));
+                                })()}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ) : null;
+              })()}
+
+              {/* Estadísticas detalladas de la partida */}
+              {loadingMatchDetails ? (
+                <div className="bg-blue-50 rounded-lg p-4 mb-6">
+                  <div className="flex items-center gap-3">
+                    <div className="relative">
+                      <div className="animate-spin rounded-full h-6 w-6 border-3 border-blue-200"></div>
+                      <div className="animate-spin rounded-full h-6 w-6 border-3 border-transparent border-t-blue-600 border-r-blue-500 absolute top-0 left-0"></div>
+                    </div>
+                    <div>
+                      <span className="text-blue-800 font-semibold block">Cargando estadísticas...</span>
+                      <span className="text-blue-600 text-sm">Obteniendo datos detallados de la partida</span>
+                    </div>
+                  </div>
+                </div>
+              ) : matchDetails && matchDetails.players ? (
+                <div className="bg-gradient-to-r from-purple-50 to-pink-50 rounded-lg p-4 mb-6">
+                  <h3 className="font-semibold text-purple-800 mb-4">📊 Estadísticas detalladas de la partida</h3>
+                  
+                  {/* Buscar el jugador actual en los datos */}
+                  {(() => {
+                    const currentPlayer = matchDetails.players.find(player => 
+                      player.account_id && player.account_id.toString() === steamId
+                    );
+                    
+                    if (!currentPlayer) {
+                      return (
+                        <div className="text-center text-gray-600 py-4">
+                          <p>No se encontraron estadísticas detalladas para esta partida.</p>
+                        </div>
+                      );
+                    }
+
+                    return (
+                      <div className="space-y-4">
+                        {/* Estadísticas principales */}
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                          <div className="bg-white rounded-lg p-3 text-center shadow-sm">
+                            <div className="text-2xl font-bold text-green-600">{currentPlayer.kills || 0}</div>
+                            <div className="text-sm text-gray-600">Kills</div>
+                          </div>
+                          <div className="bg-white rounded-lg p-3 text-center shadow-sm">
+                            <div className="text-2xl font-bold text-red-600">{currentPlayer.deaths || 0}</div>
+                            <div className="text-sm text-gray-600">Deaths</div>
+                          </div>
+                          <div className="bg-white rounded-lg p-3 text-center shadow-sm">
+                            <div className="text-2xl font-bold text-blue-600">{currentPlayer.assists || 0}</div>
+                            <div className="text-sm text-gray-600">Assists</div>
+                          </div>
+                          <div className="bg-white rounded-lg p-3 text-center shadow-sm">
+                            <div className="text-2xl font-bold text-yellow-600">{currentPlayer.kda || 0}</div>
+                            <div className="text-sm text-gray-600">KDA</div>
+                          </div>
+                        </div>
+
+                        {/* Estadísticas de recursos */}
+                        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                          <div className="bg-white rounded-lg p-3 shadow-sm">
+                            <div className="flex items-center justify-between">
+                              <span className="text-sm text-gray-600">Gold Net Worth</span>
+                              <span className="font-bold text-green-600">
+                                {currentPlayer.net_worth ? Math.round(currentPlayer.net_worth / 1000) + 'k' : '0'}
+                              </span>
+                            </div>
+                          </div>
+                          <div className="bg-white rounded-lg p-3 shadow-sm">
+                            <div className="flex items-center justify-between">
+                              <span className="text-sm text-gray-600">GPM</span>
+                              <span className="font-bold text-blue-600">{currentPlayer.gold_per_min || 0}</span>
+                            </div>
+                          </div>
+                          <div className="bg-white rounded-lg p-3 shadow-sm">
+                            <div className="flex items-center justify-between">
+                              <span className="text-sm text-gray-600">XPM</span>
+                              <span className="font-bold text-purple-600">{currentPlayer.xp_per_min || 0}</span>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Estadísticas de combate */}
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                          <div className="bg-white rounded-lg p-3 shadow-sm">
+                            <div className="flex items-center justify-between">
+                              <span className="text-sm text-gray-600">Hero Damage</span>
+                              <span className="font-bold text-red-600">
+                                {currentPlayer.hero_damage ? Math.round(currentPlayer.hero_damage / 1000) + 'k' : '0'}
+                              </span>
+                            </div>
+                          </div>
+                          <div className="bg-white rounded-lg p-3 shadow-sm">
+                            <div className="flex items-center justify-between">
+                              <span className="text-sm text-gray-600">Tower Damage</span>
+                              <span className="font-bold text-orange-600">
+                                {currentPlayer.tower_damage ? Math.round(currentPlayer.tower_damage / 1000) + 'k' : '0'}
+                              </span>
+                            </div>
+                          </div>
+                          <div className="bg-white rounded-lg p-3 shadow-sm">
+                            <div className="flex items-center justify-between">
+                              <span className="text-sm text-gray-600">Hero Healing</span>
+                              <span className="font-bold text-green-600">
+                                {currentPlayer.hero_healing ? Math.round(currentPlayer.hero_healing / 1000) + 'k' : '0'}
+                              </span>
+                            </div>
+                          </div>
+                          <div className="bg-white rounded-lg p-3 shadow-sm">
+                            <div className="flex items-center justify-between">
+                              <span className="text-sm text-gray-600">Last Hits</span>
+                              <span className="font-bold text-yellow-600">{currentPlayer.last_hits || 0}</span>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Items */}
+                        {currentPlayer.items && (
+                          <div className="bg-white rounded-lg p-3 shadow-sm">
+                            <h4 className="font-semibold text-gray-800 mb-2">🎒 Items finales</h4>
+                            <div className="grid grid-cols-6 gap-2">
+                              {[0,1,2,3,4,5].map(slot => {
+                                const itemId = currentPlayer.items[slot];
+                                return (
+                                  <div key={slot} className="aspect-square bg-gray-100 rounded border-2 border-gray-300 flex items-center justify-center">
+                                    {itemId && itemId !== 0 ? (
+                                      <img 
+                                        src={`https://cdn.cloudflare.steamstatic.com/apps/dota2/images/items/${itemId}_lg.png`}
+                                        alt={`Item ${itemId}`}
+                                        className="w-full h-full object-cover rounded"
+                                        onError={(e) => {
+                                          e.target.style.display = 'none';
+                                        }}
+                                      />
+                                    ) : (
+                                      <span className="text-gray-400 text-xs">Empty</span>
+                                    )}
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })()}
+                </div>
+              ) : (
+                <div className="bg-gray-50 rounded-lg p-4 mb-6">
+                  <h3 className="font-semibold text-gray-800 mb-3">📈 Estadísticas adicionales</h3>
+                  <div className="grid grid-cols-2 gap-4 text-sm">
+                    <div><span className="font-medium">Game Mode:</span> {selectedMatch.game_mode || 'Desconocido'}</div>
+                    <div><span className="font-medium">Skill Level:</span> {selectedMatch.skill || 'Desconocido'}</div>
+                    <div><span className="font-medium">Diretide:</span> {selectedMatch.diretide ? 'Sí' : 'No'}</div>
+                    <div><span className="font-medium">Tournament:</span> {selectedMatch.tournament ? 'Sí' : 'No'}</div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Footer del popup */}
+            <div className="sticky bottom-0 bg-gray-50 p-4 rounded-b-lg border-t">
+              <div className="flex justify-end">
+                <button
+                  onClick={closeMatchPopup}
+                  className="px-6 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg transition-colors"
+                >
+                  Cerrar
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Popup del perfil de Steam */}
+      {showSteamProfile && authenticatedUser && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-2xl">
+            {/* Header del popup */}
+            <div className="sticky top-0 bg-gradient-to-r from-slate-800 to-slate-900 text-white p-6 rounded-t-lg">
+              <div className="flex justify-between items-center">
+                <div className="flex items-center space-x-4">
+                  <img 
+                    src={authenticatedUser.avatar} 
+                    alt={authenticatedUser.name}
+                    className="w-16 h-16 rounded-full border-4 border-orange-400 shadow-xl"
+                  />
+                  <div>
+                    <h2 className="text-2xl font-bold">{authenticatedUser.name}</h2>
+                    <p className="text-orange-300">Perfil de Steam</p>
+                  </div>
+                </div>
+                <button
+                  onClick={closeSteamProfile}
+                  className="text-white hover:text-gray-200 text-3xl font-bold"
+                >
+                  ×
+                </button>
+              </div>
+            </div>
+
+            {/* Contenido del perfil */}
+            <div className="p-6">
+              {/* Información básica */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg p-4">
+                  <h3 className="font-semibold text-blue-800 mb-3 flex items-center gap-2">
+                    <span>👤</span>
+                    Información del Usuario
+                  </h3>
+                  <div className="space-y-2 text-sm">
+                    <div><span className="font-medium text-blue-700">Nombre:</span> {authenticatedUser.name}</div>
+                    <div><span className="font-medium text-blue-700">Steam ID 32-bit:</span> {steamId}</div>
+                    <div><span className="font-medium text-blue-700">Steam ID 64-bit:</span> {steam64Id}</div>
+                    <div><span className="font-medium text-blue-700">Estado:</span> 
+                      <span className="ml-2 px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full">
+                        🟢 Conectado
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-gradient-to-br from-green-50 to-green-100 rounded-lg p-4">
+                  <h3 className="font-semibold text-green-800 mb-3 flex items-center gap-2">
+                    <span>🎮</span>
+                    Estadísticas de Dota 2
+                  </h3>
+                  <div className="space-y-2 text-sm">
+                    <div><span className="font-medium text-green-700">Partidas cargadas:</span> {matches.length}</div>
+                    <div><span className="font-medium text-green-700">Amigos detectados:</span> {Object.keys(friendsInMatches).length} partidas</div>
+                    <div><span className="font-medium text-green-700">Filtro actual:</span> {timeFilter}</div>
+                    <div><span className="font-medium text-green-700">Estado:</span> 
+                      <span className="ml-2 px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full">
+                        📊 Analizando
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Enlaces de Steam */}
+              <div className="bg-gradient-to-r from-orange-50 to-red-50 rounded-lg p-4 mb-6">
+                <h3 className="font-semibold text-orange-800 mb-3 flex items-center gap-2">
+                  <span>🔗</span>
+                  Enlaces de Steam
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <button
+                    onClick={() => window.open(`https://steamcommunity.com/profiles/${steam64Id}`, '_blank')}
+                    className="p-3 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white rounded-lg transition-all duration-200 hover:scale-105 flex items-center space-x-2"
+                  >
+                    <span>👤</span>
+                    <span>Perfil Público</span>
+                  </button>
+                  
+                  <button
+                    onClick={() => window.open(`https://steamcommunity.com/profiles/${steam64Id}/games/?tab=all`, '_blank')}
+                    className="p-3 bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white rounded-lg transition-all duration-200 hover:scale-105 flex items-center space-x-2"
+                  >
+                    <span>🎮</span>
+                    <span>Juegos</span>
+                  </button>
+                  
+                  <button
+                    onClick={() => window.open(`https://steamcommunity.com/profiles/${steam64Id}/friends/`, '_blank')}
+                    className="p-3 bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white rounded-lg transition-all duration-200 hover:scale-105 flex items-center space-x-2"
+                  >
+                    <span>👥</span>
+                    <span>Lista de Amigos</span>
+                  </button>
+                  
+                  <button
+                    onClick={() => window.open(`https://www.opendota.com/players/${steamId}`, '_blank')}
+                    className="p-3 bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white rounded-lg transition-all duration-200 hover:scale-105 flex items-center space-x-2"
+                  >
+                    <span>📊</span>
+                    <span>OpenDota Stats</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Avatar grande */}
+              <div className="bg-gradient-to-br from-gray-50 to-gray-100 rounded-lg p-6 text-center">
+                <h3 className="font-semibold text-gray-800 mb-4">Avatar de Steam</h3>
+                <img 
+                  src={authenticatedUser.avatar} 
+                  alt={`Avatar completo de ${authenticatedUser.name}`}
+                  className="w-32 h-32 rounded-full border-4 border-orange-400 shadow-2xl mx-auto hover:scale-105 transition-transform duration-300"
+                />
+                <p className="text-gray-600 text-sm mt-3">Avatar actual de tu perfil de Steam</p>
+              </div>
+            </div>
+
+            {/* Footer del popup */}
+            <div className="sticky bottom-0 bg-gray-50 p-4 rounded-b-lg border-t">
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-gray-600">
+                  Perfil sincronizado con Steam
+                </span>
+                <button
+                  onClick={closeSteamProfile}
+                  className="px-6 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg transition-colors"
+                >
+                  Cerrar
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+      </div>
+    </div>
+  );
+}
