@@ -6,6 +6,8 @@ export default function DotaMatchesFixed() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [rateLimitWaiting, setRateLimitWaiting] = useState(false);
+  const [lastRequestTime, setLastRequestTime] = useState(0);
+  const [cache, setCache] = useState({});
   const [timeFilter, setTimeFilter] = useState("month");
   const [selectedMatch, setSelectedMatch] = useState(null);
   const [showMatchPopup, setShowMatchPopup] = useState(false);
@@ -523,9 +525,36 @@ export default function DotaMatchesFixed() {
       return;
     }
 
+    // Verificar cache primero
+    const cacheKey = `${steamId}_${timeFilter}`;
+    const now = Date.now();
+    const cacheExpiry = 5 * 60 * 1000; // 5 minutos
+    
+    if (cache[cacheKey] && (now - cache[cacheKey].timestamp) < cacheExpiry) {
+      console.log('📦 Usando datos del cache...');
+      setMatches(cache[cacheKey].data);
+      setTimeFilter(timeFilter);
+      setMatchesLoaded(true);
+      setLoading(false);
+      return;
+    }
+
+    // Verificar si el último request fue hace menos de 10 segundos (evitar spam)
+    const timeSinceLastRequest = now - lastRequestTime;
+    if (timeSinceLastRequest < 10000) {
+      const waitTime = Math.ceil((10000 - timeSinceLastRequest) / 1000);
+      console.log(`⏳ Esperando ${waitTime} segundos antes de hacer otra solicitud...`);
+      setError(`Por favor espera ${waitTime} segundos antes de hacer otra solicitud.`);
+      return;
+    }
+
+    setLoading(true);
+    setError("");
+    setMatchesLoaded(false);
+    setStatsReady(false);
+    setLastRequestTime(now);
+    
     try {
-      setLoading(true);
-      setError("");
       console.log(`🆔 Cargando partidas para Steam ID: ${steamId} con filtro: ${timeFilter}`);
       
       // Cargar partidas reales desde OpenDota API
@@ -624,10 +653,19 @@ export default function DotaMatchesFixed() {
       // Filtrar partidas por tiempo
       const filteredData = filterMatchesByTime(data, timeFilter);
       
-          setMatches(filteredData);
-          setTimeFilter(timeFilter);
-          setMatchesLoaded(true);
-          setStatsReady(false); // Resetear estadísticas para nuevas partidas
+      // Guardar en cache
+      setCache(prev => ({
+        ...prev,
+        [cacheKey]: {
+          data: filteredData,
+          timestamp: now
+        }
+      }));
+      
+      setMatches(filteredData);
+      setTimeFilter(timeFilter);
+      setMatchesLoaded(true);
+      setStatsReady(false); // Resetear estadísticas para nuevas partidas
           
           // Cargar héroes si no están cargados
           if (Object.keys(heroes).length === 0) {
@@ -664,9 +702,9 @@ export default function DotaMatchesFixed() {
       let errorMessage = 'Error desconocido al cargar partidas';
       
       if (error.message.includes('Rate limit')) {
-        errorMessage = '⚠️ Demasiadas solicitudes a la API. Por favor espera unos minutos antes de intentar nuevamente.';
+        errorMessage = '⚠️ Demasiadas solicitudes a la API. Por favor espera 5-10 minutos antes de intentar nuevamente. La API de OpenDota tiene límites estrictos.';
       } else if (error.message.includes('429')) {
-        errorMessage = '⚠️ Límite de solicitudes alcanzado. Por favor espera unos minutos y vuelve a intentar.';
+        errorMessage = '⚠️ Límite de solicitudes alcanzado. Por favor espera 5-10 minutos y vuelve a intentar. Intenta usar el cache si está disponible.';
       } else if (error.message.includes('Network')) {
         errorMessage = '🌐 Error de conexión. Verifica tu conexión a internet.';
       } else if (error.message.includes('404')) {
@@ -1083,22 +1121,43 @@ export default function DotaMatchesFixed() {
               <p className="text-sm text-gray-600">
                 Período actual: <span className="font-medium">{getPeriodText()}</span>
               </p>
+              {cache[`${steamId}_${timeFilter}`] && (
+                <p className="text-xs text-blue-600 flex items-center gap-1 mt-1">
+                  <span>📦</span>
+                  <span>Datos en cache (válido por 5 minutos)</span>
+                </p>
+              )}
             </div>
-            <button
-              onClick={() => {
-                setMatches([]);
-                setMatchesLoaded(false);
-                setStatsReady(false);
-                setMatchStats({ solo: { wins: 0, losses: 0 }, party: { wins: 0, losses: 0 } });
-                setFriendsInMatches({});
-                setAutoCheckFriends(false);
-                setCheckingFriends(false);
-                setLoadingProgress({ current: 0, total: 0 });
-              }}
-              className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg text-sm transition-colors"
-            >
-              🔄 Cambiar período
-            </button>
+            <div className="flex gap-2">
+              <button
+                onClick={() => {
+                  setMatches([]);
+                  setMatchesLoaded(false);
+                  setStatsReady(false);
+                  setMatchStats({ solo: { wins: 0, losses: 0 }, party: { wins: 0, losses: 0 } });
+                  setFriendsInMatches({});
+                  setAutoCheckFriends(false);
+                  setCheckingFriends(false);
+                  setLoadingProgress({ current: 0, total: 0 });
+                }}
+                className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg text-sm transition-colors"
+              >
+                🔄 Cambiar período
+              </button>
+              
+              {Object.keys(cache).length > 0 && (
+                <button
+                  onClick={() => {
+                    setCache({});
+                    console.log('🗑️ Cache limpiado');
+                  }}
+                  className="px-3 py-2 bg-gray-500 hover:bg-gray-600 text-white rounded-lg text-sm transition-colors"
+                  title="Limpiar cache (útil si hay problemas de rate limiting)"
+                >
+                  🗑️ Limpiar cache
+                </button>
+              )}
+            </div>
           </div>
         </div>
       )}
