@@ -5,6 +5,7 @@ export default function DotaMatchesFixed() {
   const [matches, setMatches] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [rateLimitWaiting, setRateLimitWaiting] = useState(false);
   const [timeFilter, setTimeFilter] = useState("month");
   const [selectedMatch, setSelectedMatch] = useState(null);
   const [showMatchPopup, setShowMatchPopup] = useState(false);
@@ -558,12 +559,54 @@ export default function DotaMatchesFixed() {
       console.log('🔗 Fecha calculada:', new Date(timeAgo * 1000).toLocaleString());
       console.log('🔗 URL completa:', API_URL);
       
-      const response = await fetch(API_URL);
-      console.log('📡 Respuesta de OpenDota:', response.status, response.statusText);
+      // Función para hacer fetch con retry y rate limiting
+      const fetchWithRetry = async (url, maxRetries = 3) => {
+        for (let attempt = 1; attempt <= maxRetries; attempt++) {
+          try {
+            console.log(`🔄 Intento ${attempt}/${maxRetries} para cargar partidas...`);
+            
+            const response = await fetch(url);
+            console.log('📡 Respuesta de OpenDota:', response.status, response.statusText);
+            
+            if (response.status === 429) {
+              // Rate limit alcanzado
+              const retryAfter = response.headers.get('Retry-After');
+              const waitTime = retryAfter ? parseInt(retryAfter) * 1000 : Math.pow(2, attempt) * 1000;
+              
+              console.log(`⏳ Rate limit alcanzado. Esperando ${waitTime/1000} segundos antes del siguiente intento...`);
+              setRateLimitWaiting(true);
+              
+              if (attempt < maxRetries) {
+                await new Promise(resolve => setTimeout(resolve, waitTime));
+                setRateLimitWaiting(false);
+                continue;
+              } else {
+                setRateLimitWaiting(false);
+                throw new Error(`Rate limit alcanzado después de ${maxRetries} intentos. Por favor espera unos minutos antes de intentar nuevamente.`);
+              }
+            }
+            
+            if (!response.ok) {
+              throw new Error(`Error ${response.status}: ${response.statusText}`);
+            }
+            
+            return response;
+          } catch (error) {
+            console.log(`❌ Error en intento ${attempt}:`, error.message);
+            
+            if (attempt === maxRetries) {
+              throw error;
+            }
+            
+            // Espera exponencial entre intentos
+            const waitTime = Math.pow(2, attempt) * 1000;
+            console.log(`⏳ Esperando ${waitTime/1000} segundos antes del siguiente intento...`);
+            await new Promise(resolve => setTimeout(resolve, waitTime));
+          }
+        }
+      };
       
-      if (!response.ok) {
-        throw new Error(`Error ${response.status}: ${response.statusText}`);
-      }
+      const response = await fetchWithRetry(API_URL);
       
       const data = await response.json();
       console.log('📊 Datos recibidos de OpenDota:', data);
@@ -619,7 +662,24 @@ export default function DotaMatchesFixed() {
   
     } catch (error) {
       console.error('❌ Error cargando partidas:', error);
-      setError(`Error cargando partidas: ${error.message}`);
+      
+      let errorMessage = 'Error desconocido al cargar partidas';
+      
+      if (error.message.includes('Rate limit')) {
+        errorMessage = '⚠️ Demasiadas solicitudes a la API. Por favor espera unos minutos antes de intentar nuevamente.';
+      } else if (error.message.includes('429')) {
+        errorMessage = '⚠️ Límite de solicitudes alcanzado. Por favor espera unos minutos y vuelve a intentar.';
+      } else if (error.message.includes('Network')) {
+        errorMessage = '🌐 Error de conexión. Verifica tu conexión a internet.';
+      } else if (error.message.includes('404')) {
+        errorMessage = '❌ No se encontraron partidas para este período.';
+      } else if (error.message.includes('403')) {
+        errorMessage = '🔒 Acceso denegado. Verifica que tu perfil de Steam sea público.';
+      } else {
+        errorMessage = `❌ Error cargando partidas: ${error.message}`;
+      }
+      
+      setError(errorMessage);
       setMatches([]);
     } finally {
       setLoading(false);
@@ -1390,10 +1450,13 @@ export default function DotaMatchesFixed() {
               
               {/* Texto de carga */}
               <h3 className="text-xl font-bold text-white mb-2 bg-gradient-to-r from-orange-400 to-red-400 bg-clip-text text-transparent">
-                Cargando Partidas
+                {rateLimitWaiting ? 'Esperando Rate Limit' : 'Cargando Partidas'}
               </h3>
               <p className="text-gray-300 text-sm mb-4">
-                Obteniendo tus partidas de Dota 2 desde OpenDota...
+                {rateLimitWaiting 
+                  ? 'API temporalmente limitada. Esperando antes del siguiente intento...' 
+                  : 'Obteniendo tus partidas de Dota 2 desde OpenDota...'
+                }
               </p>
               
               {/* Barra de progreso animada */}
