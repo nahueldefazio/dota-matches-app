@@ -1048,200 +1048,97 @@ export default function DotaMatchesFixed() {
         </div>
       )}
 
-      {/* Selector de tiempo para cargar partidas */}
+      {/* Selector de tiempo épico para cargar partidas */}
       {authenticatedUser && !matchesLoaded && (
-        <div className="mb-6 bg-blue-50 border border-blue-200 rounded-lg p-6">
-          <h3 className="text-lg font-semibold text-blue-800 mb-4">📅 Selecciona el período de partidas a cargar</h3>
-          <p className="text-sm text-blue-700 mb-4">
-            Elige qué período de tiempo quieres analizar para encontrar amigos en tus partidas.
-          </p>
-          
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            <button
-              onClick={() => handlePeriodSelection("day")}
-              className="px-4 py-3 bg-green-500 hover:bg-green-600 text-white rounded-lg transition-colors text-center"
-            >
-              <div className="text-lg">📅</div>
-              <div className="font-medium">Último día</div>
-              <div className="text-xs opacity-90">Partidas de hoy</div>
-            </button>
+        <div className="relative z-10 mb-8">
+          <div className="bg-gradient-to-br from-slate-800/95 via-slate-900/95 to-slate-800/95 backdrop-blur-lg border border-orange-400/30 rounded-2xl p-8 shadow-2xl">
+            {/* Efecto de brillo superior */}
+            <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-orange-400 to-transparent rounded-t-2xl"></div>
             
-            <button
-              onClick={() => handlePeriodSelection("week")}
-              className="px-4 py-3 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors text-center"
-            >
-              <div className="text-lg">📆</div>
-              <div className="font-medium">Última semana</div>
-              <div className="text-xs opacity-90">7 días</div>
-            </button>
+            {/* Header épico */}
+            <div className="text-center mb-8">
+              <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-orange-400 to-red-500 rounded-full mb-4 shadow-xl animate-pulse">
+                <span className="text-2xl">⚔️</span>
+              </div>
+              <h3 className="text-2xl font-bold text-white mb-2 bg-gradient-to-r from-orange-400 to-red-400 bg-clip-text text-transparent">
+                Seleccionar Período de Partidas
+              </h3>
+              <p className="text-gray-300 text-sm">
+                Elige qué período de tiempo quieres analizar para encontrar amigos en tus partidas
+              </p>
+            </div>
             
-            <button
-              onClick={() => handlePeriodSelection("2weeks")}
-              className="px-4 py-3 bg-purple-500 hover:bg-purple-600 text-white rounded-lg transition-colors text-center"
-            >
-              <div className="text-lg">📅</div>
-              <div className="font-medium">Últimas 2 semanas</div>
-              <div className="text-xs opacity-90">14 días</div>
-            </button>
-            
-            <button
-              onClick={() => handlePeriodSelection("month")}
-              className="px-4 py-3 bg-orange-500 hover:bg-orange-600 text-white rounded-lg transition-colors text-center"
-            >
-              <div className="text-lg">📊</div>
-              <div className="font-medium">Último mes</div>
-              <div className="text-xs opacity-90">30 días</div>
-            </button>
-            
-            <button
-              onClick={() => handlePeriodSelection("3months")}
-              className="px-4 py-3 bg-red-500 hover:bg-red-600 text-white rounded-lg transition-colors text-center"
-            >
-              <div className="text-lg">📅</div>
-              <div className="font-medium">Últimos 3 meses</div>
-              <div className="text-xs opacity-90">90 días</div>
-            </button>
-            
-          </div>
-          
-          {/* Selector de fecha personalizada */}
-          <div className="mt-6 border-t border-blue-200 pt-4">
-            <div className="flex items-center justify-between mb-3">
-              <h4 className="text-blue-800 font-medium flex items-center gap-2">
-                <span>🗓️</span>
-                Fechas Personalizadas
-              </h4>
+            {/* Grid de períodos épico */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
               <button
-                onClick={() => setShowCalendar(!showCalendar)}
-                className="px-3 py-1 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm transition-all duration-200"
+                onClick={() => handlePeriodSelection("day")}
+                className="group relative overflow-hidden bg-gradient-to-br from-green-600 to-emerald-700 hover:from-green-700 hover:to-emerald-800 text-white rounded-xl p-6 transition-all duration-300 transform hover:scale-105 hover:shadow-2xl"
               >
-                {showCalendar ? 'Ocultar' : 'Mostrar'} Calendario
+                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -skew-x-12 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700"></div>
+                <div className="relative text-center">
+                  <div className="text-3xl mb-2 group-hover:scale-110 transition-transform duration-300">⚡</div>
+                  <div className="font-bold text-lg">Último día</div>
+                  <div className="text-green-200 text-sm">Partidas de hoy</div>
+                  <div className="w-2 h-2 bg-white rounded-full mx-auto mt-2 group-hover:animate-pulse"></div>
+                </div>
+              </button>
+              
+              <button
+                onClick={() => handlePeriodSelection("week")}
+                className="group relative overflow-hidden bg-gradient-to-br from-blue-600 to-cyan-700 hover:from-blue-700 hover:to-cyan-800 text-white rounded-xl p-6 transition-all duration-300 transform hover:scale-105 hover:shadow-2xl"
+              >
+                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -skew-x-12 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700"></div>
+                <div className="relative text-center">
+                  <div className="text-3xl mb-2 group-hover:scale-110 transition-transform duration-300">📆</div>
+                  <div className="font-bold text-lg">Última semana</div>
+                  <div className="text-blue-200 text-sm">7 días</div>
+                  <div className="w-2 h-2 bg-white rounded-full mx-auto mt-2 group-hover:animate-pulse"></div>
+                </div>
+              </button>
+              
+              <button
+                onClick={() => handlePeriodSelection("2weeks")}
+                className="group relative overflow-hidden bg-gradient-to-br from-purple-600 to-violet-700 hover:from-purple-700 hover:to-violet-800 text-white rounded-xl p-6 transition-all duration-300 transform hover:scale-105 hover:shadow-2xl"
+              >
+                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -skew-x-12 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700"></div>
+                <div className="relative text-center">
+                  <div className="text-3xl mb-2 group-hover:scale-110 transition-transform duration-300">🗓️</div>
+                  <div className="font-bold text-lg">Últimas 2 semanas</div>
+                  <div className="text-purple-200 text-sm">14 días</div>
+                  <div className="w-2 h-2 bg-white rounded-full mx-auto mt-2 group-hover:animate-pulse"></div>
+                </div>
+              </button>
+              
+              <button
+                onClick={() => handlePeriodSelection("month")}
+                className="group relative overflow-hidden bg-gradient-to-br from-orange-600 to-red-700 hover:from-orange-700 hover:to-red-800 text-white rounded-xl p-6 transition-all duration-300 transform hover:scale-105 hover:shadow-2xl"
+              >
+                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -skew-x-12 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700"></div>
+                <div className="relative text-center">
+                  <div className="text-3xl mb-2 group-hover:scale-110 transition-transform duration-300">📊</div>
+                  <div className="font-bold text-lg">Último mes</div>
+                  <div className="text-orange-200 text-sm">30 días</div>
+                  <div className="w-2 h-2 bg-white rounded-full mx-auto mt-2 group-hover:animate-pulse"></div>
+                </div>
+              </button>
+              
+              <button
+                onClick={() => handlePeriodSelection("3months")}
+                className="group relative overflow-hidden bg-gradient-to-br from-red-600 to-pink-700 hover:from-red-700 hover:to-pink-800 text-white rounded-xl p-6 transition-all duration-300 transform hover:scale-105 hover:shadow-2xl"
+              >
+                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -skew-x-12 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700"></div>
+                <div className="relative text-center">
+                  <div className="text-3xl mb-2 group-hover:scale-110 transition-transform duration-300">🔥</div>
+                  <div className="font-bold text-lg">Últimos 3 meses</div>
+                  <div className="text-red-200 text-sm">90 días</div>
+                  <div className="w-2 h-2 bg-white rounded-full mx-auto mt-2 group-hover:animate-pulse"></div>
+                </div>
               </button>
             </div>
             
-            {showCalendar && (
-              <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl p-6 space-y-6 border border-blue-200 shadow-lg animate-in slide-in-from-top-2 duration-300">
-                {/* Header del calendario */}
-                <div className="text-center">
-                  <h4 className="text-lg font-bold text-blue-900 mb-2 flex items-center justify-center gap-2">
-                    <span>🗓️</span>
-                    <span>Seleccionar Rango de Fechas</span>
-                  </h4>
-                  <p className="text-sm text-blue-700">
-                    Elige el período específico para analizar tus partidas
-                  </p>
-                </div>
-                
-                {/* Selectores de fecha modernos */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {/* Fecha de Inicio */}
-                  <div className="space-y-3">
-                    <label className="block text-sm font-semibold text-blue-900 flex items-center gap-2">
-                      <span className="w-2 h-2 bg-green-500 rounded-full"></span>
-                      <span>Fecha de Inicio</span>
-                    </label>
-                    <div className="relative group">
-                      <input
-                        type="date"
-                        value={customStartDate}
-                        onChange={(e) => setCustomStartDate(e.target.value)}
-                        className="w-full px-4 py-3 bg-white border-2 border-blue-200 rounded-xl text-blue-900 focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-100 transition-all duration-300 group-hover:border-blue-300 shadow-sm hover:shadow-md"
-                      />
-                      <div className="absolute inset-0 bg-gradient-to-r from-transparent via-blue-50/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-xl pointer-events-none"></div>
-                    </div>
-                    {customStartDate && (
-                      <div className="text-xs text-blue-600 bg-blue-100 px-2 py-1 rounded-lg inline-block">
-                        📅 {new Date(customStartDate).toLocaleDateString('es-ES', { 
-                          weekday: 'long', 
-                          year: 'numeric', 
-                          month: 'long', 
-                          day: 'numeric' 
-                        })}
-                      </div>
-                    )}
-                  </div>
-                  
-                  {/* Fecha de Fin */}
-                  <div className="space-y-3">
-                    <label className="block text-sm font-semibold text-blue-900 flex items-center gap-2">
-                      <span className="w-2 h-2 bg-red-500 rounded-full"></span>
-                      <span>Fecha de Fin</span>
-                    </label>
-                    <div className="relative group">
-                      <input
-                        type="date"
-                        value={customEndDate}
-                        onChange={(e) => setCustomEndDate(e.target.value)}
-                        className="w-full px-4 py-3 bg-white border-2 border-blue-200 rounded-xl text-blue-900 focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-100 transition-all duration-300 group-hover:border-blue-300 shadow-sm hover:shadow-md"
-                      />
-                      <div className="absolute inset-0 bg-gradient-to-r from-transparent via-blue-50/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-xl pointer-events-none"></div>
-                    </div>
-                    {customEndDate && (
-                      <div className="text-xs text-blue-600 bg-blue-100 px-2 py-1 rounded-lg inline-block">
-                        📅 {new Date(customEndDate).toLocaleDateString('es-ES', { 
-                          weekday: 'long', 
-                          year: 'numeric', 
-                          month: 'long', 
-                          day: 'numeric' 
-                        })}
-                      </div>
-                    )}
-                  </div>
-                </div>
-                
-                {/* Rango seleccionado */}
-                {customStartDate && customEndDate && (
-                  <div className="bg-gradient-to-r from-green-100 to-blue-100 border border-green-200 rounded-xl p-4 animate-in fade-in duration-500">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
-                        <span className="font-semibold text-green-800">Período Seleccionado:</span>
-                      </div>
-                      <div className="text-sm text-green-700 bg-white px-3 py-1 rounded-lg shadow-sm">
-                        {(() => {
-                          const start = new Date(customStartDate);
-                          const end = new Date(customEndDate);
-                          const diffTime = Math.abs(end - start);
-                          const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
-                          return `${diffDays} días`;
-                        })()}
-                      </div>
-                    </div>
-                    <div className="mt-2 text-sm text-green-700">
-                      <span className="font-medium">Desde:</span> {new Date(customStartDate).toLocaleDateString('es-ES')} • 
-                      <span className="font-medium ml-2">Hasta:</span> {new Date(customEndDate).toLocaleDateString('es-ES')}
-                    </div>
-                  </div>
-                )}
-                
-                {/* Botones de acción */}
-                <div className="flex flex-col sm:flex-row gap-3 justify-end">
-                  <button
-                    onClick={() => {
-                      setCustomStartDate('');
-                      setCustomEndDate('');
-                    }}
-                    className="px-4 py-2 bg-gray-500 hover:bg-gray-600 text-white rounded-lg font-medium transition-all duration-200 flex items-center justify-center gap-2"
-                  >
-                    <span>🗑️</span>
-                    <span>Limpiar</span>
-                  </button>
-                  <button
-                    onClick={handleCustomDateSelection}
-                    disabled={!customStartDate || !customEndDate}
-                    className="px-6 py-3 bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 disabled:from-gray-400 disabled:to-gray-500 text-white rounded-xl font-bold transition-all duration-300 flex items-center gap-2 transform hover:scale-105 disabled:scale-100 disabled:cursor-not-allowed shadow-lg hover:shadow-xl"
-                  >
-                    <span className="text-lg">🔍</span>
-                    <span>Cargar Partidas</span>
-                    <div className="w-2 h-2 bg-white rounded-full animate-pulse"></div>
-                  </button>
-                </div>
-                
-                {/* Efectos de fondo */}
-                <div className="absolute -z-10 top-4 left-4 w-8 h-8 bg-blue-200 rounded-full opacity-20 animate-pulse"></div>
-                <div className="absolute -z-10 bottom-4 right-4 w-6 h-6 bg-indigo-200 rounded-full opacity-20 animate-pulse delay-1000"></div>
-              </div>
-            )}
+            {/* Efectos de fondo animados */}
+            <div className="absolute -z-10 top-1/4 left-1/4 w-32 h-32 bg-gradient-to-r from-orange-500/10 to-red-500/10 rounded-full blur-2xl animate-pulse"></div>
+            <div className="absolute -z-10 bottom-1/4 right-1/4 w-24 h-24 bg-gradient-to-r from-blue-500/10 to-purple-500/10 rounded-full blur-xl animate-pulse delay-1000"></div>
           </div>
         </div>
       )}
@@ -1545,18 +1442,28 @@ export default function DotaMatchesFixed() {
               <button
                 onClick={checkAllMatchesForFriends}
                 disabled={checkingFriends || !friends || friends.length === 0}
-                className="px-4 py-2 bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white rounded-lg text-sm flex items-center gap-2"
+                className="group relative overflow-hidden px-6 py-3 bg-gradient-to-r from-green-600 via-emerald-600 to-green-700 hover:from-green-700 hover:via-emerald-700 hover:to-green-800 disabled:from-gray-500 disabled:to-gray-600 text-white rounded-xl font-semibold flex items-center gap-3 transition-all duration-300 transform hover:scale-105 hover:shadow-xl disabled:scale-100 disabled:cursor-not-allowed"
               >
-                {checkingFriends ? (
-                  <>
-                    <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
-                    Verificando...
-                  </>
-                ) : (
-                  <>
-                    🔍 Analizar compañeros de juego
-                  </>
-                )}
+                {/* Efecto de brillo animado */}
+                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -skew-x-12 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700"></div>
+                
+                <div className="relative flex items-center gap-3">
+                  {checkingFriends ? (
+                    <>
+                      <div className="relative">
+                        <div className="animate-spin rounded-full h-5 w-5 border-2 border-white/30"></div>
+                        <div className="animate-spin rounded-full h-5 w-5 border-2 border-transparent border-t-white absolute top-0 left-0" style={{animationDirection: 'reverse'}}></div>
+                      </div>
+                      <span>Verificando...</span>
+                    </>
+                  ) : (
+                    <>
+                      <span className="text-lg group-hover:scale-110 transition-transform duration-300">🔍</span>
+                      <span>Analizar compañeros de juego</span>
+                      <div className="w-2 h-2 bg-white rounded-full group-hover:animate-pulse"></div>
+                    </>
+                  )}
+                </div>
               </button>
               
               {Object.keys(friendsInMatches).length > 0 && (
@@ -1698,11 +1605,17 @@ export default function DotaMatchesFixed() {
 
           <div className="space-y-3">
             {matches.map((match) => (
-              <div 
-                key={match.match_id} 
+              <div
+                key={match.match_id}
                 onClick={() => openMatchPopup(match)}
-                className="bg-gradient-to-br from-slate-800/90 to-slate-900/90 backdrop-blur-sm border border-orange-400/30 rounded-lg p-4 shadow-xl hover:shadow-2xl transition-all duration-500 hover:scale-[1.02] hover:border-orange-400 cursor-pointer group"
+                className="relative group bg-gradient-to-br from-slate-800/90 to-slate-900/90 backdrop-blur-sm border border-orange-400/30 rounded-xl p-6 shadow-xl hover:shadow-2xl transition-all duration-500 hover:scale-[1.03] hover:border-orange-400 cursor-pointer overflow-hidden"
               >
+                {/* Efecto de brillo animado */}
+                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-orange-400/10 to-transparent -skew-x-12 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700"></div>
+                
+                {/* Partículas flotantes */}
+                <div className="absolute top-2 right-2 w-1 h-1 bg-orange-400 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-300 animate-pulse"></div>
+                <div className="absolute bottom-2 left-2 w-1.5 h-1.5 bg-red-400 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-500 animate-pulse delay-300"></div>
                 <div className="flex justify-between items-start mb-2">
                   <div className="flex items-center space-x-3">
                     <span className="font-medium text-lg text-white">#{match.match_id}</span>
@@ -2315,7 +2228,6 @@ export default function DotaMatchesFixed() {
           </div>
         </div>
       )}
-      </div>
     </div>
   );
 }
