@@ -542,14 +542,8 @@ export default function DotaMatchesFixed() {
         case 'week':
           timeAgo = now - (7 * 24 * 60 * 60); // 1 semana
           break;
-        case '2weeks':
-          timeAgo = now - (14 * 24 * 60 * 60); // 2 semanas
-          break;
         case 'month':
           timeAgo = now - (30 * 24 * 60 * 60); // 30 días
-          break;
-        case '3months':
-          timeAgo = now - (90 * 24 * 60 * 60); // 90 días
           break;
         default:
           timeAgo = now - (30 * 24 * 60 * 60); // Por defecto 30 días
@@ -785,9 +779,7 @@ export default function DotaMatchesFixed() {
     const periodNames = {
       'day': 'Último día',
       'week': 'Última semana', 
-      '2weeks': 'Últimas 2 semanas',
-      'month': 'Último mes',
-      '3months': 'Últimos 3 meses'
+      'month': 'Último mes'
     };
     
     return periodNames[timeFilter] || 'Período personalizado';
@@ -1069,7 +1061,7 @@ export default function DotaMatchesFixed() {
             </div>
             
             {/* Grid de períodos épico */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-8 justify-center">
               <button
                 onClick={() => handlePeriodSelection("day")}
                 className="group relative overflow-hidden bg-gradient-to-br from-green-600 to-emerald-700 hover:from-green-700 hover:to-emerald-800 text-white rounded-xl p-6 transition-all duration-300 transform hover:scale-105 hover:shadow-2xl"
@@ -1097,19 +1089,6 @@ export default function DotaMatchesFixed() {
               </button>
               
               <button
-                onClick={() => handlePeriodSelection("2weeks")}
-                className="group relative overflow-hidden bg-gradient-to-br from-purple-600 to-violet-700 hover:from-purple-700 hover:to-violet-800 text-white rounded-xl p-6 transition-all duration-300 transform hover:scale-105 hover:shadow-2xl"
-              >
-                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -skew-x-12 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700"></div>
-                <div className="relative text-center">
-                  <div className="text-3xl mb-2 group-hover:scale-110 transition-transform duration-300">🗓️</div>
-                  <div className="font-bold text-lg">Últimas 2 semanas</div>
-                  <div className="text-purple-200 text-sm">14 días</div>
-                  <div className="w-2 h-2 bg-white rounded-full mx-auto mt-2 group-hover:animate-pulse"></div>
-                </div>
-              </button>
-              
-              <button
                 onClick={() => handlePeriodSelection("month")}
                 className="group relative overflow-hidden bg-gradient-to-br from-orange-600 to-red-700 hover:from-orange-700 hover:to-red-800 text-white rounded-xl p-6 transition-all duration-300 transform hover:scale-105 hover:shadow-2xl"
               >
@@ -1118,19 +1097,6 @@ export default function DotaMatchesFixed() {
                   <div className="text-3xl mb-2 group-hover:scale-110 transition-transform duration-300">📊</div>
                   <div className="font-bold text-lg">Último mes</div>
                   <div className="text-orange-200 text-sm">30 días</div>
-                  <div className="w-2 h-2 bg-white rounded-full mx-auto mt-2 group-hover:animate-pulse"></div>
-                </div>
-              </button>
-              
-              <button
-                onClick={() => handlePeriodSelection("3months")}
-                className="group relative overflow-hidden bg-gradient-to-br from-red-600 to-pink-700 hover:from-red-700 hover:to-pink-800 text-white rounded-xl p-6 transition-all duration-300 transform hover:scale-105 hover:shadow-2xl"
-              >
-                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -skew-x-12 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700"></div>
-                <div className="relative text-center">
-                  <div className="text-3xl mb-2 group-hover:scale-110 transition-transform duration-300">🔥</div>
-                  <div className="font-bold text-lg">Últimos 3 meses</div>
-                  <div className="text-red-200 text-sm">90 días</div>
                   <div className="w-2 h-2 bg-white rounded-full mx-auto mt-2 group-hover:animate-pulse"></div>
                 </div>
               </button>
