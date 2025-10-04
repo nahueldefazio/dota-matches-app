@@ -532,31 +532,29 @@ export default function DotaMatchesFixed() {
       // OpenDota requiere Steam ID de 32 bits (Account ID)
       const steam32Id = steamId; // Ya es el ID de 32 bits
       
-      // Calcular timestamp basado en el filtro
-      const now = Math.floor(Date.now() / 1000);
-      let timeAgo;
+      // Calcular días hacia atrás basado en el filtro (OpenDota usa días, no timestamps)
+      let daysAgo;
       
       switch (timeFilter) {
         case 'day':
-          timeAgo = now - (1 * 24 * 60 * 60); // 1 día
+          daysAgo = 1; // 1 día
           break;
         case 'week':
-          timeAgo = now - (7 * 24 * 60 * 60); // 1 semana
+          daysAgo = 7; // 1 semana
           break;
         case 'month':
-          timeAgo = now - (30 * 24 * 60 * 60); // 30 días
+          daysAgo = 30; // 30 días
           break;
         default:
-          timeAgo = now - (30 * 24 * 60 * 60); // Por defecto 30 días
+          daysAgo = 30; // Por defecto 30 días
       }
       
-      const API_URL = `https://api.opendota.com/api/players/${steam32Id}/matches?date=${timeAgo}`;
+      const API_URL = `https://api.opendota.com/api/players/${steam32Id}/matches?date=${daysAgo}`;
       
       console.log('🔗 Cargando partidas desde OpenDota API...');
       console.log('🔗 Steam ID 32-bit:', steam32Id);
       console.log('🔗 Filtro seleccionado:', timeFilter);
-      console.log('🔗 Timestamp calculado:', timeAgo);
-      console.log('🔗 Fecha calculada:', new Date(timeAgo * 1000).toLocaleString());
+      console.log('🔗 Días hacia atrás:', daysAgo);
       console.log('🔗 URL completa:', API_URL);
       
       // Función para hacer fetch con retry y rate limiting
@@ -773,14 +771,19 @@ export default function DotaMatchesFixed() {
 
       const steam32Id = steamId;
       
-      // La API de OpenDota solo soporta 'date' (desde), no 'date_end'
-      // Necesitamos cargar partidas desde la fecha de inicio y filtrar en el cliente
-      const API_URL = `https://api.opendota.com/api/players/${steam32Id}/matches?date=${startTimestamp}`;
+      // Calcular días desde la fecha de inicio hasta ahora
+      const now = Math.floor(Date.now() / 1000);
+      const daysSinceStart = Math.ceil((now - startTimestamp) / (24 * 60 * 60));
+      
+      // La API de OpenDota solo soporta 'date' (días hacia atrás), no fechas específicas
+      // Cargamos desde la fecha de inicio y filtramos en el cliente por la fecha de fin
+      const API_URL = `https://api.opendota.com/api/players/${steam32Id}/matches?date=${daysSinceStart}`;
       
       console.log('🔗 Cargando partidas con fechas personalizadas...');
       console.log('🔗 Steam ID 32-bit:', steam32Id);
       console.log('🔗 Fecha inicio:', new Date(startTimestamp * 1000).toLocaleString());
       console.log('🔗 Fecha fin:', new Date(endTimestamp * 1000).toLocaleString());
+      console.log('🔗 Días desde inicio:', daysSinceStart);
       console.log('🔗 URL:', API_URL);
       
       const response = await fetch(API_URL);
