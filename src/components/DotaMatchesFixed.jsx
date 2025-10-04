@@ -1102,6 +1102,147 @@ export default function DotaMatchesFixed() {
               </button>
             </div>
             
+            {/* Selector de fecha personalizada */}
+            <div className="mt-8 border-t border-orange-400/20 pt-6">
+              <div className="flex items-center justify-between mb-4">
+                <h4 className="text-lg font-bold text-white flex items-center gap-3">
+                  <span className="text-2xl">🗓️</span>
+                  <span className="bg-gradient-to-r from-orange-400 to-red-400 bg-clip-text text-transparent">Fechas Personalizadas</span>
+                </h4>
+                <button
+                  onClick={() => setShowCalendar(!showCalendar)}
+                  className="px-4 py-2 bg-gradient-to-r from-indigo-600 to-purple-700 hover:from-indigo-700 hover:to-purple-800 text-white rounded-lg text-sm transition-all duration-300 transform hover:scale-105 font-semibold flex items-center gap-2"
+                >
+                  <span>{showCalendar ? '👁️‍🗨️' : '👁️'}</span>
+                  <span>{showCalendar ? 'Ocultar' : 'Mostrar'} Calendario</span>
+                </button>
+              </div>
+              
+              {showCalendar && (
+                <div className="bg-gradient-to-br from-slate-800/95 via-slate-900/95 to-slate-800/95 backdrop-blur-lg border border-orange-400/30 rounded-2xl p-6 space-y-6 shadow-2xl animate-in slide-in-from-top-2 duration-300">
+                  {/* Header del calendario */}
+                  <div className="text-center">
+                    <h4 className="text-xl font-bold text-white mb-2 flex items-center justify-center gap-2">
+                      <span className="text-2xl">🗓️</span>
+                      <span className="bg-gradient-to-r from-orange-400 to-red-400 bg-clip-text text-transparent">Seleccionar Rango de Fechas</span>
+                    </h4>
+                    <p className="text-sm text-gray-300">
+                      Elige el período específico para analizar tus partidas
+                    </p>
+                  </div>
+                  
+                  {/* Selectores de fecha modernos */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {/* Fecha de Inicio */}
+                    <div className="space-y-3">
+                      <label className="block text-sm font-bold text-white flex items-center gap-2">
+                        <span className="w-3 h-3 bg-green-500 rounded-full animate-pulse"></span>
+                        <span>Fecha de Inicio</span>
+                      </label>
+                      <div className="relative group">
+                        <input
+                          type="date"
+                          value={customStartDate}
+                          onChange={(e) => setCustomStartDate(e.target.value)}
+                          className="w-full px-4 py-3 bg-slate-800/50 border-2 border-orange-400/30 rounded-xl text-white focus:outline-none focus:border-orange-400 focus:ring-4 focus:ring-orange-400/20 transition-all duration-300 group-hover:border-orange-400/50 shadow-lg hover:shadow-xl backdrop-blur-sm"
+                        />
+                        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-orange-400/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-xl pointer-events-none"></div>
+                      </div>
+                      {customStartDate && (
+                        <div className="text-xs text-orange-300 bg-orange-500/20 px-3 py-2 rounded-lg inline-block border border-orange-400/30">
+                          📅 {new Date(customStartDate).toLocaleDateString('es-ES', { 
+                            weekday: 'long', 
+                            year: 'numeric', 
+                            month: 'long', 
+                            day: 'numeric' 
+                          })}
+                        </div>
+                      )}
+                    </div>
+                    
+                    {/* Fecha de Fin */}
+                    <div className="space-y-3">
+                      <label className="block text-sm font-bold text-white flex items-center gap-2">
+                        <span className="w-3 h-3 bg-red-500 rounded-full animate-pulse"></span>
+                        <span>Fecha de Fin</span>
+                      </label>
+                      <div className="relative group">
+                        <input
+                          type="date"
+                          value={customEndDate}
+                          onChange={(e) => setCustomEndDate(e.target.value)}
+                          className="w-full px-4 py-3 bg-slate-800/50 border-2 border-orange-400/30 rounded-xl text-white focus:outline-none focus:border-orange-400 focus:ring-4 focus:ring-orange-400/20 transition-all duration-300 group-hover:border-orange-400/50 shadow-lg hover:shadow-xl backdrop-blur-sm"
+                        />
+                        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-orange-400/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-xl pointer-events-none"></div>
+                      </div>
+                      {customEndDate && (
+                        <div className="text-xs text-orange-300 bg-orange-500/20 px-3 py-2 rounded-lg inline-block border border-orange-400/30">
+                          📅 {new Date(customEndDate).toLocaleDateString('es-ES', { 
+                            weekday: 'long', 
+                            year: 'numeric', 
+                            month: 'long', 
+                            day: 'numeric' 
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  
+                  {/* Rango seleccionado */}
+                  {customStartDate && customEndDate && (
+                    <div className="bg-gradient-to-r from-green-500/20 to-blue-500/20 border border-green-400/30 rounded-xl p-4 animate-in fade-in duration-500 backdrop-blur-sm">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
+                          <span className="font-bold text-green-300">Período Seleccionado:</span>
+                        </div>
+                        <div className="text-sm text-green-300 bg-green-500/20 px-3 py-1 rounded-lg shadow-sm border border-green-400/30">
+                          {(() => {
+                            const start = new Date(customStartDate);
+                            const end = new Date(customEndDate);
+                            const diffTime = Math.abs(end - start);
+                            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+                            return `${diffDays} días`;
+                          })()}
+                        </div>
+                      </div>
+                      <div className="mt-2 text-sm text-green-300">
+                        <span className="font-medium">Desde:</span> {new Date(customStartDate).toLocaleDateString('es-ES')} • 
+                        <span className="font-medium ml-2">Hasta:</span> {new Date(customEndDate).toLocaleDateString('es-ES')}
+                      </div>
+                    </div>
+                  )}
+                  
+                  {/* Botones de acción */}
+                  <div className="flex flex-col sm:flex-row gap-3 justify-end">
+                    <button
+                      onClick={() => {
+                        setCustomStartDate('');
+                        setCustomEndDate('');
+                      }}
+                      className="px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg font-medium transition-all duration-200 flex items-center justify-center gap-2 transform hover:scale-105"
+                    >
+                      <span>🗑️</span>
+                      <span>Limpiar</span>
+                    </button>
+                    <button
+                      onClick={handleCustomDateSelection}
+                      disabled={!customStartDate || !customEndDate}
+                      className="px-6 py-3 bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 disabled:from-gray-600 disabled:to-gray-700 text-white rounded-xl font-bold transition-all duration-300 flex items-center gap-2 transform hover:scale-105 disabled:scale-100 disabled:cursor-not-allowed shadow-lg hover:shadow-xl"
+                    >
+                      <span className="text-lg">🔍</span>
+                      <span>Cargar Partidas</span>
+                      <div className="w-2 h-2 bg-white rounded-full animate-pulse"></div>
+                    </button>
+                  </div>
+                  
+                  {/* Efectos de fondo */}
+                  <div className="absolute -z-10 top-4 left-4 w-8 h-8 bg-orange-400/20 rounded-full opacity-20 animate-pulse"></div>
+                  <div className="absolute -z-10 bottom-4 right-4 w-6 h-6 bg-red-400/20 rounded-full opacity-20 animate-pulse delay-1000"></div>
+                </div>
+              )}
+            </div>
+            
             {/* Efectos de fondo animados */}
             <div className="absolute -z-10 top-1/4 left-1/4 w-32 h-32 bg-gradient-to-r from-orange-500/10 to-red-500/10 rounded-full blur-2xl animate-pulse"></div>
             <div className="absolute -z-10 bottom-1/4 right-1/4 w-24 h-24 bg-gradient-to-r from-blue-500/10 to-purple-500/10 rounded-full blur-xl animate-pulse delay-1000"></div>
