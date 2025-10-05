@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from "react";
-import { useSteamAuth } from "../hooks/useSteamAuth";
 
 export default function DotaMatchesFixed() {
   const [matches, setMatches] = useState([]);
@@ -28,19 +27,154 @@ export default function DotaMatchesFixed() {
   const [statsReady, setStatsReady] = useState(false);
 
   // Usar el hook de autenticación de Steam
-  const {
-    user: authenticatedUser,
-    loading: authLoading,
-    error: authError,
-    friends,
-    loadingFriends,
-    loginWithSteam,
-    handleSteamCallback,
-    logout,
-    isSteamCallback,
-    isAuthenticated,
-    fetchSteamFriends
-  } = useSteamAuth();
+  // Estados para autenticación local
+  const [authenticatedUser, setAuthenticatedUser] = useState(null);
+  const [authLoading, setAuthLoading] = useState(false);
+  const [authError, setAuthError] = useState("");
+  const [friends, setFriends] = useState([]);
+  const [loadingFriends, setLoadingFriends] = useState(false);
+
+  // Funciones de autenticación local
+  const isAuthenticated = !!authenticatedUser;
+  const isSteamCallback = () => {
+    const urlParams = new URLSearchParams(window.location.search);
+    return urlParams.has('openid.claimed_id') && urlParams.has('openid.identity');
+  };
+
+  // Función para obtener datos reales de Steam usando API pública
+  const getSteamProfileData = async (steamId) => {
+    try {
+      // Usar la API pública de Steam (sin API key requerida para datos básicos)
+      const response = await fetch(`https://api.steampowered.com/ISteamUser/GetPlayerSummaries/v0002/?key=${import.meta.env.VITE_STEAM_API_KEY || 'DEMO'}&steamids=${steamId}`);
+      
+      if (!response.ok) {
+        throw new Error('No se pudo obtener datos de Steam');
+      }
+      
+      const data = await response.json();
+      
+      if (!data.response || !data.response.players || data.response.players.length === 0) {
+        throw new Error('Usuario de Steam no encontrado');
+      }
+      
+      return data.response.players[0];
+    } catch (error) {
+      console.warn('Error obteniendo datos de Steam, usando datos básicos:', error);
+      
+      // Fallback: datos básicos si la API falla
+      return {
+        personaname: `Usuario Steam ${steamId.substring(0, 8)}`,
+        avatarfull: `https://via.placeholder.com/184x184/2196F3/FFFFFF?text=Steam+${steamId.substring(0, 4)}`,
+        profileurl: `https://steamcommunity.com/profiles/${steamId}`,
+        personastate: 0
+      };
+    }
+  };
+
+  // Función para iniciar autenticación con Steam
+  const loginWithSteam = () => {
+    try {
+      setAuthLoading(true);
+      setAuthError(null);
+      
+      // Usar autenticación local - Steam regresará a la página actual
+      const realm = window.location.origin;
+      const returnUrl = window.location.href;
+      
+      const params = new URLSearchParams({
+        'openid.ns': 'http://specs.openid.net/auth/2.0',
+        'openid.mode': 'checkid_setup',
+        'openid.return_to': returnUrl,
+        'openid.realm': realm,
+        'openid.identity': 'http://specs.openid.net/auth/2.0/identifier_select',
+        'openid.claimed_id': 'http://specs.openid.net/auth/2.0/identifier_select'
+      });
+
+      const steamAuthUrl = `https://steamcommunity.com/openid/login?${params.toString()}`;
+      window.location.href = steamAuthUrl;
+      
+    } catch (err) {
+      console.error('Error iniciando sesión con Steam:', err);
+      setAuthError('Error al iniciar sesión con Steam');
+      setAuthLoading(false);
+    }
+  };
+
+  // Función para procesar el callback de Steam
+  const handleSteamCallback = async () => {
+    try {
+      setAuthLoading(true);
+      setAuthError(null);
+
+      const urlParams = new URLSearchParams(window.location.search);
+      
+      if (!urlParams.has('openid.claimed_id') || !urlParams.has('openid.identity')) {
+        throw new Error('No se encontraron parámetros de Steam en la URL');
+      }
+
+      const claimedId = urlParams.get('openid.claimed_id');
+      const steamIdMatch = claimedId.match(/\/id\/(\d+)/);
+      
+      if (!steamIdMatch) {
+        throw new Error('No se pudo extraer SteamID de la URL');
+      }
+
+      const steamId = steamIdMatch[1];
+      
+      // Obtener datos reales del perfil de Steam
+      console.log('🔍 Obteniendo perfil real de Steam...');
+      const profileData = await getSteamProfileData(steamId);
+      
+      // Crear datos del usuario con información real de Steam
+      const userData = {
+        steamID: steamId,
+        name: profileData.personaname,
+        avatar: profileData.avatarfull || profileData.avatarmedium || profileData.avatar,
+        profileUrl: profileData.profileurl,
+        personState: profileData.personastate,
+        communityVisibility: profileData.communityvisibilitystate,
+        createdAt: new Date().toISOString()
+      };
+
+      setAuthenticatedUser(userData);
+      
+      // Limpiar la URL
+      window.history.replaceState({}, document.title, window.location.pathname);
+      
+    } catch (err) {
+      console.error('Error procesando callback de Steam:', err);
+      setAuthError(`Error de autenticación: ${err.message}`);
+    } finally {
+      setAuthLoading(false);
+    }
+  };
+
+  // Función para cerrar sesión
+  const logout = () => {
+    setAuthenticatedUser(null);
+    setFriends([]);
+    setMatches([]);
+    setMatchesLoaded(false);
+    setStatsReady(false);
+    setFriendsInMatches({});
+    setAuthError("");
+  };
+
+  // Función para obtener amigos (simulada por ahora)
+  const fetchSteamFriends = async (steamId) => {
+    setLoadingFriends(true);
+    try {
+      // Por ahora, simular amigos o usar una lista vacía
+      // En el futuro se podría implementar usando la API de Steam
+      setFriends([]);
+      console.log('👥 Amigos simulados cargados (funcionalidad limitada sin backend)');
+    } catch (error) {
+      console.error('Error cargando amigos:', error);
+      setFriends([]);
+    } finally {
+      setLoadingFriends(false);
+    }
+  };
 
   // Obtener Steam IDs del usuario autenticado
   // El Steam ID de 64 bits es: 76561198033076015
@@ -52,10 +186,10 @@ export default function DotaMatchesFixed() {
 
   // Manejar callback de Steam
   useEffect(() => {
-    if (isSteamCallback) {
+    if (isSteamCallback()) {
       handleSteamCallback();
     }
-  }, [isSteamCallback, handleSteamCallback]);
+  }, []);
 
   // useEffect para simular progreso de carga de amigos
   useEffect(() => {

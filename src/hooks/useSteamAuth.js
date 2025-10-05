@@ -69,7 +69,8 @@ export const useSteamAuth = () => {
       
       // Obtener datos reales del perfil de Steam desde el servidor
       console.log('🔍 Obteniendo perfil real de Steam...');
-      const profileResponse = await fetch(`http://localhost:3001/api/steam/profile/${steamId}`);
+      const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001';
+      const profileResponse = await fetch(`${apiBaseUrl}/api/steam/profile/${steamId}`);
       
       if (!profileResponse.ok) {
         throw new Error('No se pudo obtener el perfil de Steam');
@@ -131,7 +132,8 @@ export const useSteamAuth = () => {
       for (let i = 0; i < retries; i++) {
         try {
           console.log(`🔄 Intento ${i + 1}/${retries} de conexión al servidor...`);
-          response = await fetch(`http://localhost:3001/api/auth/steam/friends?steamId=${steamId}`);
+          const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001';
+          response = await fetch(`${apiBaseUrl}/api/auth/steam/friends?steamId=${steamId}`);
           break; // Si la conexión es exitosa, salir del loop
         } catch (error) {
           lastError = error;
