@@ -69,7 +69,7 @@ export const useSteamAuth = () => {
       
       // Obtener datos reales del perfil de Steam desde el servidor
       console.log('🔍 Obteniendo perfil real de Steam...');
-      const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001';
+      const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'https://dota-matches-9hzo0po8h-nahueldefazios-projects.vercel.app';
       const profileResponse = await fetch(`${apiBaseUrl}/api/steam/profile/${steamId}`);
       
       if (!profileResponse.ok) {
@@ -132,7 +132,7 @@ export const useSteamAuth = () => {
       for (let i = 0; i < retries; i++) {
         try {
           console.log(`🔄 Intento ${i + 1}/${retries} de conexión al servidor...`);
-          const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001';
+          const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'https://dota-matches-9hzo0po8h-nahueldefazios-projects.vercel.app';
           response = await fetch(`${apiBaseUrl}/api/auth/steam/friends?steamId=${steamId}`);
           break; // Si la conexión es exitosa, salir del loop
         } catch (error) {

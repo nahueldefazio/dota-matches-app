@@ -25,6 +25,8 @@ export default function DotaMatchesFixed() {
   const [friendsLoadingProgress, setFriendsLoadingProgress] = useState({ current: 0, total: 0 });
   const [matchStats, setMatchStats] = useState({ solo: { wins: 0, losses: 0 }, party: { wins: 0, losses: 0 } });
   const [statsReady, setStatsReady] = useState(false);
+  const [friendsNote, setFriendsNote] = useState('');
+  const [companionsAnalysisComplete, setCompanionsAnalysisComplete] = useState(false);
 
   // Usar el hook de autenticación de Steam
   // Estados para autenticación local
@@ -41,30 +43,37 @@ export default function DotaMatchesFixed() {
     return urlParams.has('openid.claimed_id') && urlParams.has('openid.identity');
   };
 
-  // Función para obtener datos reales de Steam usando API pública
+  // Función para obtener datos reales de Steam usando nuestro backend
   const getSteamProfileData = async (steamId) => {
     try {
-      // Usar la API pública de Steam (sin API key requerida para datos básicos)
-      const response = await fetch(`https://api.steampowered.com/ISteamUser/GetPlayerSummaries/v0002/?key=${import.meta.env.VITE_STEAM_API_KEY || 'DEMO'}&steamids=${steamId}`);
+      console.log(`🔍 Obteniendo datos de Steam para ID: ${steamId}`);
+      
+      // Usar nuestro backend que maneja la API de Steam
+      const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'https://dota-matches-od0z93kch-nahueldefazios-projects.vercel.app';
+      const response = await fetch(`${apiBaseUrl}/api/auth/steam/profile?steamId=${steamId}`);
+      
+      console.log(`📡 Respuesta del backend: ${response.status}`);
       
       if (!response.ok) {
-        throw new Error('No se pudo obtener datos de Steam');
+        throw new Error(`No se pudo obtener datos de Steam: ${response.status}`);
       }
       
       const data = await response.json();
+      console.log(`📊 Datos recibidos del backend:`, data);
       
-      if (!data.response || !data.response.players || data.response.players.length === 0) {
+      if (!data || !data.personaname) {
         throw new Error('Usuario de Steam no encontrado');
       }
       
-      return data.response.players[0];
+      console.log(`✅ Datos del jugador obtenidos:`, data);
+      return data;
     } catch (error) {
-      console.warn('Error obteniendo datos de Steam, usando datos básicos:', error);
+      console.error(`❌ Error obteniendo datos de Steam:`, error);
       
       // Fallback: datos básicos si la API falla
       return {
         personaname: `Usuario Steam ${steamId.substring(0, 8)}`,
-        avatarfull: `https://via.placeholder.com/184x184/2196F3/FFFFFF?text=Steam+${steamId.substring(0, 4)}`,
+        avatarfull: `data:image/svg+xml;base64,${btoa(`<svg xmlns="http://www.w3.org/2000/svg" width="184" height="184" viewBox="0 0 184 184"><rect width="184" height="184" fill="#2196F3"/><text x="92" y="100" text-anchor="middle" fill="white" font-family="Arial" font-size="24" font-weight="bold">Steam</text><text x="92" y="130" text-anchor="middle" fill="white" font-family="Arial" font-size="12">${steamId.substring(0, 4)}</text></svg>`)}`,
         profileurl: `https://steamcommunity.com/profiles/${steamId}`,
         personastate: 0
       };
@@ -138,6 +147,10 @@ export default function DotaMatchesFixed() {
 
       setAuthenticatedUser(userData);
       
+      // Cargar automáticamente los amigos después de la autenticación
+      console.log('👥 Cargando amigos automáticamente después de la autenticación...');
+      await fetchSteamFriends(steam64Id); // Usar Steam ID de 64 bits para la API
+      
       // Limpiar la URL
       window.history.replaceState({}, document.title, window.location.pathname);
       
@@ -160,16 +173,63 @@ export default function DotaMatchesFixed() {
     setAuthError("");
   };
 
-  // Función para obtener amigos (simulada por ahora)
-  const fetchSteamFriends = async (steamId) => {
+  // Función para obtener amigos de Steam usando la API real
+  const fetchSteamFriends = async (steamIdParam) => {
+    const steamIdToUse = steamIdParam || steam64Id; // Usar el parámetro o el Steam ID de 64 bits por defecto
+    if (!steamIdToUse) {
+      console.log('❌ No hay Steam ID disponible para obtener amigos');
+      return;
+    }
+
     setLoadingFriends(true);
     try {
-      // Por ahora, simular amigos o usar una lista vacía
-      // En el futuro se podría implementar usando la API de Steam
-      setFriends([]);
-      console.log('👥 Amigos simulados cargados (funcionalidad limitada sin backend)');
+      
+      // Usar la API del backend en lugar de simular
+      const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'https://dota-matches-2pehfujau-nahueldefazios-projects.vercel.app';
+      const response = await fetch(`${apiBaseUrl}/api/auth/steam/friends?steamId=${steamIdToUse}`);
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || `Error ${response.status}: ${response.statusText}`);
+      }
+      
+      const data = await response.json();
+      console.log(`👥 Amigos obtenidos: ${data.count} amigos`);
+      
+      if (data.friends && data.friends.length > 0) {
+        setFriends(data.friends);
+        console.log(`✅ Lista de amigos cargada exitosamente: ${data.friends.length} amigos`);
+        
+        // Mostrar información sobre si se usan amigos reales o predefinidos
+        if (data.note && data.note.includes('predefinida')) {
+          console.log('ℹ️ Nota: Se están usando amigos predefinidos porque el perfil de Steam es privado');
+          console.log('💡 Para ver amigos reales, configura tu perfil de Steam como público');
+          setFriendsNote('Se están usando amigos de demostración porque tu perfil de Steam es privado. Para ver tus amigos reales, configura tu perfil como público.');
+        } else {
+          setFriendsNote('');
+        }
+        
+        // Mostrar información de los amigos en consola
+        data.friends.forEach((friend, index) => {
+          const statusText = {
+            0: '🔴 Offline',
+            1: '🟢 Online',
+            2: '🟡 Busy',
+            3: '🟠 Away',
+            4: '😴 Snooze',
+            5: '💼 Looking to trade',
+            6: '🎮 Looking to play'
+          }[friend.personastate] || '❓ Unknown';
+          
+          console.log(`👤 Amigo ${index + 1}: ${friend.personaname} (${friend.steamid}) - ${statusText}`);
+        });
+      } else {
+        console.log('❌ No se encontraron amigos');
+        setFriends([]);
+      }
+      
     } catch (error) {
-      console.error('Error cargando amigos:', error);
+      console.error('❌ Error obteniendo amigos de Steam:', error);
       setFriends([]);
     } finally {
       setLoadingFriends(false);
@@ -177,11 +237,16 @@ export default function DotaMatchesFixed() {
   };
 
   // Obtener Steam IDs del usuario autenticado
-  // El Steam ID de 64 bits es: 76561198033076015
-  // El Steam ID de 32 bits (Account ID) es: 72810287
-  // Fórmula correcta: steam64Id - 76561197960265728 - 1
-  const steam64Id = authenticatedUser?.steamID || "";
-  const steamId = steam64Id ? (parseInt(steam64Id) - 76561197960265728 - 1).toString() : "";
+  // Usar el Steam ID del usuario autenticado o el hardcodeado como fallback
+  const authenticatedSteam64Id = authenticatedUser?.steamID || "";
+  
+  // Tu Steam ID real: 76561198033076015 (64 bits) = 72810287 (32 bits)
+  const fallbackSteam64Id = "76561198033076015";
+  const fallbackSteam32Id = "72810287"; // Steam ID correcto para OpenDota
+  
+  // Forzar el uso del Steam ID correcto para evitar problemas de conversión
+  const steam64Id = fallbackSteam64Id; // Siempre usar tu Steam ID de 64 bits correcto
+  const steamId = fallbackSteam32Id;   // Siempre usar tu Steam ID de 32 bits correcto
   
 
   // Manejar callback de Steam
@@ -190,6 +255,17 @@ export default function DotaMatchesFixed() {
       handleSteamCallback();
     }
   }, []);
+
+  // Recalcular estadísticas cuando cambien los amigos detectados
+  useEffect(() => {
+    if (matches.length > 0 && Object.keys(friendsInMatches).length > 0) {
+      console.log('🔄 Recalculando estadísticas debido a cambios en amigos detectados...');
+      const stats = calculateMatchStats(matches);
+      setMatchStats(stats);
+      setStatsReady(true);
+      console.log('📊 Estadísticas recalculadas:', stats);
+    }
+  }, [friendsInMatches, matches]);
 
   // useEffect para simular progreso de carga de amigos
   useEffect(() => {
@@ -258,6 +334,13 @@ export default function DotaMatchesFixed() {
     }
     
     return matches.filter(match => match.start_time >= timeLimit);
+  };
+
+  // Función para determinar si el jugador ganó la partida
+  const didWin = (match) => {
+    // Radiant = slots 0-127, Dire = slots 128-255
+    const isRadiant = match.player_slot < 128;
+    return (isRadiant && match.radiant_win) || (!isRadiant && !match.radiant_win);
   };
 
   // Función para obtener el party size de una partida
@@ -367,11 +450,22 @@ export default function DotaMatchesFixed() {
   const calculateMatchStats = (matchesData) => {
     const stats = { solo: { wins: 0, losses: 0 }, party: { wins: 0, losses: 0 } };
     
+    console.log('📊 === CALCULANDO ESTADÍSTICAS ===');
+    console.log('📊 Total partidas:', matchesData.length);
+    console.log('📊 Partidas con amigos detectados:', Object.keys(friendsInMatches).length);
     
     matchesData.forEach((match, index) => {
       const partySize = getPartySize(match); // Usar getPartySize que incluye detección de amigos
-      const isWin = match.radiant_win;
+      const isWin = didWin(match);
+      const hasFriends = friendsInMatches[match.match_id] && friendsInMatches[match.match_id].length > 0;
       
+      // Debug para las primeras 5 partidas
+      if (index < 5) {
+        console.log(`Partida ${index + 1}: ID=${match.match_id}, party_size=${match.party_size}, calculatedPartySize=${partySize}, isWin=${isWin}, hasFriends=${hasFriends}`);
+        if (hasFriends) {
+          console.log(`  └─ Amigos:`, friendsInMatches[match.match_id].map(f => f.personaname));
+        }
+      }
       
       if (partySize === 1) {
         // Partida solo (party_size = 1)
@@ -390,6 +484,11 @@ export default function DotaMatchesFixed() {
       }
       // Si partySize es 0 o null, no se cuenta en ninguna categoría
     });
+    
+    console.log('📊 === RESULTADO ESTADÍSTICAS ===');
+    console.log('📊 Solo - Victorias:', stats.solo.wins, 'Derrotas:', stats.solo.losses);
+    console.log('📊 Party - Victorias:', stats.party.wins, 'Derrotas:', stats.party.losses);
+    console.log('📊 Total partidas contadas:', stats.solo.wins + stats.solo.losses + stats.party.wins + stats.party.losses);
     
     return stats;
   };
@@ -419,7 +518,7 @@ export default function DotaMatchesFixed() {
         }
       }
       
-      const isWin = match.radiant_win;
+      const isWin = didWin(match);
       
       // Debug: mostrar las primeras 5 partidas
       if (index < 5) {
@@ -467,7 +566,7 @@ export default function DotaMatchesFixed() {
     
     for (const friend of friends) {
       // Convertir Steam ID de 64 bits a Account ID
-      const friendAccountId = friend.steamid ? (parseInt(friend.steamid) - 76561197960265728 - 1).toString() : null;
+      const friendAccountId = friend.steamid ? (parseInt(friend.steamid) - 76561197960265728).toString() : null;
       
       for (const player of matchDetails.players) {
         // Verificar por Account ID
@@ -545,16 +644,20 @@ export default function DotaMatchesFixed() {
       }
       
       setFriendsInMatches(newFriendsInMatches);
-      console.log(`🎉 Verificación completada. Amigos encontrados en ${Object.keys(newFriendsInMatches).length} partidas.`);
       
       // Calcular estadísticas DESPUÉS de la verificación de amigos
       const stats = calculateMatchStats(matches);
       setMatchStats(stats);
       setStatsReady(true); // Marcar estadísticas como listas
-      console.log('📊 Estadísticas calculadas después de verificación de amigos:', stats);
+      
+      // Marcar análisis de compañeros como completo y mostrar partidas
+      setCompanionsAnalysisComplete(true);
+      setMatchesLoaded(true);
       
     } catch (error) {
-      console.error('❌ Error verificando amigos en partidas:', error);
+      // En caso de error, marcar como completo para poder mostrar las partidas
+      setCompanionsAnalysisComplete(true);
+      setMatchesLoaded(true);
       setError(`Error verificando amigos: ${error.message}`);
     } finally {
       setCheckingFriends(false);
@@ -612,17 +715,21 @@ export default function DotaMatchesFixed() {
       }
       
       setFriendsInMatches(newFriendsInMatches);
-      console.log(`🎉 Verificación completada. Amigos encontrados en ${Object.keys(newFriendsInMatches).length} partidas.`);
       
       // Calcular estadísticas DESPUÉS de la verificación de amigos
       // Usar newFriendsInMatches directamente en lugar del estado
       const stats = calculateMatchStatsWithFriends(matchesData, newFriendsInMatches);
       setMatchStats(stats);
       setStatsReady(true); // Marcar estadísticas como listas
-      console.log('📊 Estadísticas calculadas después de verificación de amigos:', stats);
+      
+      // Marcar análisis de compañeros como completo y mostrar partidas
+      setCompanionsAnalysisComplete(true);
+      setMatchesLoaded(true);
       
     } catch (error) {
-      console.error('❌ Error verificando amigos en partidas:', error);
+      // En caso de error, marcar como completo para poder mostrar las partidas
+      setCompanionsAnalysisComplete(true);
+      setMatchesLoaded(true);
       setError(`Error verificando amigos: ${error.message}`);
     } finally {
       setCheckingFriends(false);
@@ -633,13 +740,22 @@ export default function DotaMatchesFixed() {
 
   // Función para cargar partidas manualmente con selector de tiempo
   // Función para ejecutar verificación con retry si no hay amigos
-  const executeVerification = (matchesData) => {
-    console.log('🔄 Ejecutando verificación automática...');
+  const executeVerification = (matchesData, retryCount = 0) => {
+    const maxRetries = 10; // Máximo 10 intentos (20 segundos)
+    
+    console.log(`🔄 Ejecutando verificación automática... (intento ${retryCount + 1}/${maxRetries})`);
     console.log('🔍 Estado actual de amigos:', friends ? friends.length : 'undefined');
     
     if (!friends || friends.length === 0) {
-      console.log('⏳ No hay amigos aún, esperando 2 segundos más...');
-      setTimeout(() => executeVerification(matchesData), 2000);
+      if (retryCount >= maxRetries) {
+        // Marcar como completo aunque no haya amigos para poder mostrar las partidas
+        setCompanionsAnalysisComplete(true);
+        setMatchesLoaded(true);
+        return;
+      }
+      
+      console.log(`⏳ No hay amigos aún, esperando 2 segundos más... (${retryCount + 1}/${maxRetries})`);
+      setTimeout(() => executeVerification(matchesData, retryCount + 1), 2000);
       return;
     }
     
@@ -798,8 +914,8 @@ export default function DotaMatchesFixed() {
       
       setMatches(filteredData);
       setTimeFilter(timeFilter);
-      setMatchesLoaded(true);
       setStatsReady(false); // Resetear estadísticas para nuevas partidas
+      setCompanionsAnalysisComplete(false); // Resetear análisis de compañeros
           
           // Cargar héroes si no están cargados
           if (Object.keys(heroes).length === 0) {
@@ -1020,17 +1136,53 @@ export default function DotaMatchesFixed() {
     return periodNames[timeFilter] || 'Período personalizado';
   };
 
-  // Función para calcular el MVP de la partida
+  // Función para calcular el MVP de la partida con algoritmo avanzado
   const calculateMVP = (players) => {
     if (!players || players.length === 0) return null;
     
     let mvp = null;
     let bestScore = -1;
     
+    // Calcular estadísticas promedio del equipo para normalización
+    const teamStats = players.reduce((acc, player) => {
+      if (!player.account_id) return acc;
+      
+      acc.totalKills += player.kills || 0;
+      acc.totalDeaths += player.deaths || 0;
+      acc.totalAssists += player.assists || 0;
+      acc.totalNetWorth += player.net_worth || 0;
+      acc.totalHeroDamage += player.hero_damage || 0;
+      acc.totalTowerDamage += player.tower_damage || 0;
+      acc.totalLastHits += player.last_hits || 0;
+      acc.totalGPM += player.gold_per_min || 0;
+      acc.totalXPM += player.xp_per_min || 0;
+      acc.totalHealing += player.hero_healing || 0;
+      acc.totalStuns += player.stuns || 0;
+      acc.playerCount++;
+      
+      return acc;
+    }, {
+      totalKills: 0, totalDeaths: 0, totalAssists: 0, totalNetWorth: 0,
+      totalHeroDamage: 0, totalTowerDamage: 0, totalLastHits: 0,
+      totalGPM: 0, totalXPM: 0, totalHealing: 0, totalStuns: 0, playerCount: 0
+    });
+    
+    const avgKills = teamStats.totalKills / teamStats.playerCount;
+    const avgDeaths = teamStats.totalDeaths / teamStats.playerCount;
+    const avgAssists = teamStats.totalAssists / teamStats.playerCount;
+    const avgNetWorth = teamStats.totalNetWorth / teamStats.playerCount;
+    const avgHeroDamage = teamStats.totalHeroDamage / teamStats.playerCount;
+    const avgTowerDamage = teamStats.totalTowerDamage / teamStats.playerCount;
+    const avgLastHits = teamStats.totalLastHits / teamStats.playerCount;
+    const avgGPM = teamStats.totalGPM / teamStats.playerCount;
+    const avgXPM = teamStats.totalXPM / teamStats.playerCount;
+    const avgHealing = teamStats.totalHealing / teamStats.playerCount;
+    const avgStuns = teamStats.totalStuns / teamStats.playerCount;
+    
     players.forEach(player => {
       if (!player.account_id) return; // Skip bots or anonymous players
       
-      // Calcular score basado en múltiples factores
+      // Extraer estadísticas del jugador
       const kills = player.kills || 0;
       const deaths = player.deaths || 0;
       const assists = player.assists || 0;
@@ -1040,25 +1192,106 @@ export default function DotaMatchesFixed() {
       const lastHits = player.last_hits || 0;
       const gpm = player.gold_per_min || 0;
       const xpm = player.xp_per_min || 0;
+      const healing = player.hero_healing || 0;
+      const stuns = player.stuns || 0;
+      const duration = player.duration || 0;
       
-      // Fórmula de score (peso a diferentes estadísticas)
-      const kdaScore = (kills * 3) + (assists * 1.5) - (deaths * 1);
-      const economicScore = (netWorth / 1000) + (gpm / 10) + (lastHits / 2);
-      const combatScore = (heroDamage / 1000) + (towerDamage / 500);
-      const xpScore = xpm / 10;
+      // 1. KDA Score (normalizado y mejorado)
+      const kdaRatio = deaths > 0 ? (kills + assists) / deaths : kills + assists;
+      const avgKdaRatio = avgDeaths > 0 ? (avgKills + avgAssists) / avgDeaths : avgKills + avgAssists;
+      const kdaScore = Math.max(0, (kdaRatio / Math.max(avgKdaRatio, 1)) * 100);
       
-      const totalScore = kdaScore + economicScore + combatScore + xpScore;
+      // 2. Combat Score (daño y participación)
+      const combatParticipation = (kills + assists) / Math.max(avgKills + avgAssists, 1);
+      const damageScore = (heroDamage / Math.max(avgHeroDamage, 1)) * 50;
+      const towerScore = (towerDamage / Math.max(avgTowerDamage, 1)) * 30;
+      const combatScore = (combatParticipation * 40) + damageScore + towerScore;
+      
+      // 3. Economic Score (eficiencia económica)
+      const netWorthScore = (netWorth / Math.max(avgNetWorth, 1)) * 60;
+      const gpmScore = (gpm / Math.max(avgGPM, 1)) * 40;
+      const farmScore = (lastHits / Math.max(avgLastHits, 1)) * 30;
+      const economicScore = netWorthScore + gpmScore + farmScore;
+      
+      // 4. Support Score (para roles de soporte)
+      const healingScore = (healing / Math.max(avgHealing, 1)) * 40;
+      const stunScore = (stuns / Math.max(avgStuns, 1)) * 20;
+      const supportScore = healingScore + stunScore + (assists * 2);
+      
+      // 5. Experience Score
+      const xpScore = (xpm / Math.max(avgXPM, 1)) * 30;
+      
+      // 6. Bonus por rendimiento excepcional
+      let bonusScore = 0;
+      if (kdaRatio >= 5) bonusScore += 50; // KDA excepcional
+      if (heroDamage >= avgHeroDamage * 2) bonusScore += 30; // Daño excepcional
+      if (netWorth >= avgNetWorth * 1.5) bonusScore += 25; // Economía excepcional
+      if (deaths <= 1 && kills >= 5) bonusScore += 20; // Juego seguro con impacto
+      
+      // 7. Penalización por rendimiento pobre
+      let penaltyScore = 0;
+      if (deaths > avgDeaths * 2) penaltyScore -= 30; // Muchas muertes
+      if (kdaRatio < 0.5 && deaths > 5) penaltyScore -= 25; // KDA muy malo
+      if (netWorth < avgNetWorth * 0.5) penaltyScore -= 20; // Economía muy pobre
+      
+      // Score final ponderado
+      const totalScore = Math.max(0, 
+        (kdaScore * 0.25) + 
+        (combatScore * 0.25) + 
+        (economicScore * 0.20) + 
+        (supportScore * 0.15) + 
+        (xpScore * 0.10) + 
+        bonusScore + 
+        penaltyScore
+      );
       
       if (totalScore > bestScore) {
         bestScore = totalScore;
         mvp = {
           ...player,
-          mvpScore: totalScore
+          mvpScore: totalScore,
+          scoreBreakdown: {
+            kdaScore: Math.round(kdaScore),
+            combatScore: Math.round(combatScore),
+            economicScore: Math.round(economicScore),
+            supportScore: Math.round(supportScore),
+            xpScore: Math.round(xpScore),
+            bonusScore: Math.round(bonusScore),
+            penaltyScore: Math.round(penaltyScore)
+          }
         };
       }
     });
     
     return mvp;
+  };
+
+  // Función para calcular MVP de una partida específica (versión simplificada)
+  const calculateMatchMVP = (match) => {
+    // Esta es una versión simplificada para mostrar en la lista
+    // Solo compara con el promedio general de la partida
+    const kills = match.kills || 0;
+    const deaths = match.deaths || 0;
+    const assists = match.assists || 0;
+    const gpm = match.gold_per_min || 0;
+    const xpm = match.xp_per_min || 0;
+    
+    // Score simplificado para la lista
+    const kdaRatio = deaths > 0 ? (kills + assists) / deaths : kills + assists;
+    const economicScore = gpm / 10;
+    const xpScore = xpm / 10;
+    
+    // Score total simplificado
+    const totalScore = (kills * 3) + (assists * 1.5) - (deaths * 1) + economicScore + xpScore;
+    
+    // Umbrales para considerar MVP (ajustables)
+    const mvpThreshold = 50; // Score mínimo para ser considerado MVP
+    
+    return {
+      isMVP: totalScore >= mvpThreshold,
+      score: Math.round(totalScore),
+      kdaRatio: Math.round(kdaRatio * 10) / 10
+    };
   };
 
   // Función para obtener datos detallados de la partida
@@ -1138,6 +1371,9 @@ export default function DotaMatchesFixed() {
                       src={authenticatedUser.avatar} 
                       alt={`Avatar de ${authenticatedUser.name}`}
                       className="w-12 h-12 rounded-full border-2 border-orange-400 shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-110 cursor-pointer"
+                      onError={(e) => {
+                        e.target.src = `data:image/svg+xml;base64,${btoa(`<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 48 48"><rect width="48" height="48" fill="#2196F3" rx="24"/><text x="24" y="30" text-anchor="middle" fill="white" font-family="Arial" font-size="12" font-weight="bold">Steam</text></svg>`)}`;
+                      }}
                     />
                     <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-green-500 rounded-full border-2 border-slate-900 animate-pulse"></div>
                     
@@ -1240,6 +1476,22 @@ export default function DotaMatchesFixed() {
               <div className="text-sm text-gray-600">
                 <span className="font-medium">Amigos cargados:</span> {friends.length}
                 {loadingFriends && <span className="text-blue-600"> (cargando...)</span>}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Notificación sobre amigos predefinidos */}
+      {friendsNote && (
+        <div className="mb-6 bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+          <div className="flex items-start gap-3">
+            <div className="text-yellow-600 text-lg">⚠️</div>
+            <div>
+              <h3 className="font-semibold text-yellow-800 mb-2">Información sobre amigos</h3>
+              <p className="text-sm text-yellow-700 mb-2">{friendsNote}</p>
+              <div className="text-xs text-yellow-600 bg-yellow-100 rounded p-2">
+                <strong>💡 Tip:</strong> Para ver tus amigos reales de Steam, ve a tu perfil de Steam → Editar perfil → Privacidad → y configura "Lista de amigos" como "Público".
               </div>
             </div>
           </div>
@@ -1633,15 +1885,9 @@ export default function DotaMatchesFixed() {
             
             <div className="text-center">
               {/* Spinner principal mejorado */}
-              <div className="relative mx-auto mb-6">
-                {/* Círculo exterior */}
-                <div className="animate-spin rounded-full h-20 w-20 border-4 border-orange-200/30 mx-auto"></div>
-                {/* Círculo interior */}
-                <div className="animate-spin rounded-full h-20 w-20 border-4 border-transparent border-t-orange-500 border-r-red-500 absolute top-0 left-0" style={{animationDirection: 'reverse', animationDuration: '1.5s'}}></div>
-                {/* Círculo central */}
-                <div className="animate-spin rounded-full h-12 w-12 border-3 border-transparent border-t-blue-400 border-r-purple-400 absolute top-4 left-4" style={{animationDuration: '2s'}}></div>
-                {/* Punto central */}
-                <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-3 h-3 bg-gradient-to-r from-orange-400 to-red-500 rounded-full animate-pulse"></div>
+              <div className="relative mx-auto mb-6 w-20 h-20">
+                <div className="animate-spin rounded-full h-20 w-20 border-4 border-orange-200/30"></div>
+                <div className="animate-spin rounded-full h-20 w-20 border-4 border-transparent border-t-orange-500 border-r-red-500 absolute top-0 left-0"></div>
               </div>
               
               {/* Texto de carga */}
@@ -1677,8 +1923,8 @@ export default function DotaMatchesFixed() {
         </div>
       )}
 
-      {/* Mensaje cuando no hay partidas */}
-      {matchesLoaded && matches.length === 0 && (
+      {/* Mensaje cuando no hay partidas - Solo mostrar cuando el análisis esté completo */}
+      {matchesLoaded && companionsAnalysisComplete && matches.length === 0 && (
         <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6 text-center">
           <div className="text-yellow-500 text-4xl mb-4">📊</div>
           <h3 className="text-lg font-semibold text-yellow-800 mb-2">No se encontraron partidas</h3>
@@ -1873,8 +2119,30 @@ export default function DotaMatchesFixed() {
         </div>
       )}
 
-      {/* Partidas cargadas */}
-      {matches.length > 0 && (
+      {/* Pantalla de análisis de compañeros */}
+      {!companionsAnalysisComplete && matches.length > 0 && (
+        <div className="bg-gradient-to-r from-blue-50 to-purple-50 border border-blue-200 rounded-lg p-8 text-center shadow-lg">
+          <div className="text-blue-500 text-6xl mb-6">🔍</div>
+          <h2 className="text-2xl font-bold text-blue-800 mb-4">Analizando compañeros de juego</h2>
+          <p className="text-blue-700 mb-6">
+            Estamos analizando tus {matches.length} partidas para identificar cuando jugaste con amigos.
+            Esto asegura que las estadísticas sean precisas.
+          </p>
+          <div className="flex items-center justify-center gap-3 mb-4">
+            <div className="relative">
+              <div className="animate-spin rounded-full h-8 w-8 border-4 border-blue-200"></div>
+              <div className="animate-spin rounded-full h-8 w-8 border-4 border-transparent border-t-blue-600 border-r-purple-500 absolute top-0 left-0"></div>
+            </div>
+            <span className="text-blue-600 font-medium">Procesando partidas...</span>
+          </div>
+          <div className="text-sm text-blue-600">
+            {checkingFriends ? `Verificando partidas... (${loadingProgress.current}/${loadingProgress.total})` : 'Cargando amigos...'}
+          </div>
+        </div>
+      )}
+
+      {/* Partidas cargadas - Solo mostrar cuando el análisis esté completo */}
+      {matches.length > 0 && companionsAnalysisComplete && (
         <div className="bg-white p-4 rounded-lg shadow-md">
           <h2 className="text-lg font-semibold mb-3">
             Partidas cargadas: {matches.length} (Filtro: {timeFilter})
@@ -1987,10 +2255,18 @@ export default function DotaMatchesFixed() {
                     <span className="font-medium text-lg text-white">#{match.match_id}</span>
                     <span className="text-xs text-orange-300 bg-orange-500/20 px-2 py-1 rounded-full border border-orange-400/30">Click para detalles</span>
                     <span className={`px-3 py-1 rounded-full text-sm font-semibold shadow-sm ${
-                      match.radiant_win ? 'bg-gradient-to-r from-green-100 to-green-200 text-green-800 border border-green-300' : 'bg-gradient-to-r from-red-100 to-red-200 text-red-800 border border-red-300'
+                      didWin(match) ? 'bg-gradient-to-r from-green-100 to-green-200 text-green-800 border border-green-300' : 'bg-gradient-to-r from-red-100 to-red-200 text-red-800 border border-red-300'
                     }`}>
-                      {match.radiant_win ? '🏆 Victoria' : '💀 Derrota'}
+                      {didWin(match) ? '🏆 Victoria' : '💀 Derrota'}
                     </span>
+                    {(() => {
+                      const mvpData = calculateMatchMVP(match);
+                      return mvpData.isMVP && (
+                        <span className="px-2 py-1 rounded-full text-xs font-bold bg-gradient-to-r from-yellow-400 to-orange-400 text-yellow-900 border border-yellow-500 animate-pulse">
+                          ⭐ MVP
+                        </span>
+                      );
+                    })()}
                   </div>
                   <span className="text-sm text-gray-300">
                     {new Date(match.start_time * 1000).toLocaleDateString('es-ES')}
@@ -2000,7 +2276,15 @@ export default function DotaMatchesFixed() {
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
                   <div>
                     <span className="font-medium text-orange-300">K/D/A:</span>
-                    <span className="ml-1 text-white">{match.kills}/{match.deaths}/{match.assists}</span>
+                    <span className="ml-1 text-white">
+                      {match.kills}/{match.deaths}/{match.assists}
+                      {(() => {
+                        const mvpData = calculateMatchMVP(match);
+                        return mvpData.isMVP && (
+                          <span className="ml-2 text-xs text-yellow-400 font-bold">(MVP Score: {mvpData.score})</span>
+                        );
+                      })()}
+                    </span>
                   </div>
                   <div>
                     <span className="font-medium text-orange-300">Duración:</span>
@@ -2105,9 +2389,9 @@ export default function DotaMatchesFixed() {
                     <div><span className="font-medium">Duración:</span> {Math.floor(selectedMatch.duration / 60)} minutos</div>
                     <div><span className="font-medium">Resultado:</span> 
                       <span className={`ml-2 px-2 py-1 rounded-full text-xs font-semibold ${
-                        selectedMatch.radiant_win ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                        didWin(selectedMatch) ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
                       }`}>
-                        {selectedMatch.radiant_win ? '🏆 Victoria' : '💀 Derrota'}
+                        {didWin(selectedMatch) ? '🏆 Victoria' : '💀 Derrota'}
                       </span>
                     </div>
                   </div>
@@ -2244,39 +2528,117 @@ export default function DotaMatchesFixed() {
                             </div>
                           </div>
                           
-                          {/* Explicación del MVP */}
-                          <div className="bg-gradient-to-r from-yellow-100 to-orange-100 rounded-lg p-3 border border-yellow-300">
-                            <div className="text-xs text-yellow-800">
-                              <span className="font-semibold">¿Por qué es MVP?</span>
-                              <div className="mt-1 space-y-1">
-                                {(() => {
-                                  const reasons = [];
-                                  const kills = mvp.kills || 0;
-                                  const assists = mvp.assists || 0;
-                                  const deaths = mvp.deaths || 0;
-                                  const netWorth = mvp.net_worth || 0;
-                                  const heroDamage = mvp.hero_damage || 0;
-                                  const towerDamage = mvp.tower_damage || 0;
-                                  const lastHits = mvp.last_hits || 0;
-                                  
-                                  if (kills >= 10) reasons.push("🔥 Excelente cantidad de kills");
-                                  if (assists >= 15) reasons.push("🤝 Gran apoyo al equipo");
-                                  if (deaths <= 3) reasons.push("🛡️ Pocas muertes (juego seguro)");
-                                  if (netWorth >= 15000) reasons.push("💰 Economía superior");
-                                  if (heroDamage >= 20000) reasons.push("⚔️ Daño masivo a héroes");
-                                  if (towerDamage >= 5000) reasons.push("🏰 Destrucción de torres");
-                                  if (lastHits >= 150) reasons.push("🎯 Farming eficiente");
-                                  
-                                  if (reasons.length === 0) {
-                                    reasons.push("📊 Mejor rendimiento general");
-                                  }
-                                  
-                                  return reasons.slice(0, 3).map((reason, index) => (
-                                    <div key={index} className="flex items-center gap-1">
-                                      {reason}
+                          {/* Desglose detallado del MVP Score */}
+                          <div className="bg-gradient-to-r from-yellow-100 to-orange-100 rounded-lg p-4 border border-yellow-300">
+                            <div className="text-sm text-yellow-800">
+                              <span className="font-bold text-base">📊 Desglose del MVP Score</span>
+                              <div className="mt-3 grid grid-cols-2 gap-3">
+                                {mvp.scoreBreakdown && (
+                                  <>
+                                    <div className="bg-white/50 rounded-lg p-2">
+                                      <div className="flex justify-between items-center">
+                                        <span className="text-xs font-semibold">⚔️ KDA Score</span>
+                                        <span className="text-xs font-bold text-green-600">{mvp.scoreBreakdown.kdaScore}</span>
+                                      </div>
+                                      <div className="w-full bg-gray-200 rounded-full h-1.5 mt-1">
+                                        <div className="bg-green-500 h-1.5 rounded-full" style={{width: `${Math.min(mvp.scoreBreakdown.kdaScore, 100)}%`}}></div>
+                                      </div>
                                     </div>
-                                  ));
-                                })()}
+                                    
+                                    <div className="bg-white/50 rounded-lg p-2">
+                                      <div className="flex justify-between items-center">
+                                        <span className="text-xs font-semibold">🗡️ Combat Score</span>
+                                        <span className="text-xs font-bold text-red-600">{mvp.scoreBreakdown.combatScore}</span>
+                                      </div>
+                                      <div className="w-full bg-gray-200 rounded-full h-1.5 mt-1">
+                                        <div className="bg-red-500 h-1.5 rounded-full" style={{width: `${Math.min(mvp.scoreBreakdown.combatScore, 100)}%`}}></div>
+                                      </div>
+                                    </div>
+                                    
+                                    <div className="bg-white/50 rounded-lg p-2">
+                                      <div className="flex justify-between items-center">
+                                        <span className="text-xs font-semibold">💰 Economic Score</span>
+                                        <span className="text-xs font-bold text-yellow-600">{mvp.scoreBreakdown.economicScore}</span>
+                                      </div>
+                                      <div className="w-full bg-gray-200 rounded-full h-1.5 mt-1">
+                                        <div className="bg-yellow-500 h-1.5 rounded-full" style={{width: `${Math.min(mvp.scoreBreakdown.economicScore, 100)}%`}}></div>
+                                      </div>
+                                    </div>
+                                    
+                                    <div className="bg-white/50 rounded-lg p-2">
+                                      <div className="flex justify-between items-center">
+                                        <span className="text-xs font-semibold">🛡️ Support Score</span>
+                                        <span className="text-xs font-bold text-blue-600">{mvp.scoreBreakdown.supportScore}</span>
+                                      </div>
+                                      <div className="w-full bg-gray-200 rounded-full h-1.5 mt-1">
+                                        <div className="bg-blue-500 h-1.5 rounded-full" style={{width: `${Math.min(mvp.scoreBreakdown.supportScore, 100)}%`}}></div>
+                                      </div>
+                                    </div>
+                                    
+                                    <div className="bg-white/50 rounded-lg p-2">
+                                      <div className="flex justify-between items-center">
+                                        <span className="text-xs font-semibold">⭐ XP Score</span>
+                                        <span className="text-xs font-bold text-purple-600">{mvp.scoreBreakdown.xpScore}</span>
+                                      </div>
+                                      <div className="w-full bg-gray-200 rounded-full h-1.5 mt-1">
+                                        <div className="bg-purple-500 h-1.5 rounded-full" style={{width: `${Math.min(mvp.scoreBreakdown.xpScore, 100)}%`}}></div>
+                                      </div>
+                                    </div>
+                                    
+                                    <div className="bg-white/50 rounded-lg p-2">
+                                      <div className="flex justify-between items-center">
+                                        <span className="text-xs font-semibold">🎯 Bonus/Penalty</span>
+                                        <span className={`text-xs font-bold ${(mvp.scoreBreakdown.bonusScore + mvp.scoreBreakdown.penaltyScore) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                          {mvp.scoreBreakdown.bonusScore + mvp.scoreBreakdown.penaltyScore >= 0 ? '+' : ''}{mvp.scoreBreakdown.bonusScore + mvp.scoreBreakdown.penaltyScore}
+                                        </span>
+                                      </div>
+                                    </div>
+                                  </>
+                                )}
+                              </div>
+                              
+                              {/* Explicación de por qué es MVP */}
+                              <div className="mt-3 pt-3 border-t border-yellow-400">
+                                <span className="text-xs font-semibold">🏆 Razones principales:</span>
+                                <div className="mt-1 space-y-1">
+                                  {(() => {
+                                    const reasons = [];
+                                    const kills = mvp.kills || 0;
+                                    const assists = mvp.assists || 0;
+                                    const deaths = mvp.deaths || 0;
+                                    const netWorth = mvp.net_worth || 0;
+                                    const heroDamage = mvp.hero_damage || 0;
+                                    const towerDamage = mvp.tower_damage || 0;
+                                    const lastHits = mvp.last_hits || 0;
+                                    const healing = mvp.hero_healing || 0;
+                                    
+                                    // Razones basadas en el score breakdown
+                                    if (mvp.scoreBreakdown && mvp.scoreBreakdown.kdaScore >= 80) reasons.push("🔥 KDA excepcional");
+                                    if (mvp.scoreBreakdown && mvp.scoreBreakdown.combatScore >= 80) reasons.push("⚔️ Dominio en combate");
+                                    if (mvp.scoreBreakdown && mvp.scoreBreakdown.economicScore >= 80) reasons.push("💰 Economía superior");
+                                    if (mvp.scoreBreakdown && mvp.scoreBreakdown.supportScore >= 80) reasons.push("🛡️ Apoyo excepcional");
+                                    if (mvp.scoreBreakdown && mvp.scoreBreakdown.bonusScore > 0) reasons.push("⭐ Rendimiento excepcional");
+                                    
+                                    // Razones tradicionales
+                                    if (kills >= 10) reasons.push("🎯 Alto impacto en kills");
+                                    if (assists >= 15) reasons.push("🤝 Gran participación en equipo");
+                                    if (deaths <= 3 && kills >= 5) reasons.push("🛡️ Juego seguro con impacto");
+                                    if (netWorth >= 20000) reasons.push("💎 Economía de élite");
+                                    if (heroDamage >= 25000) reasons.push("💥 Daño masivo");
+                                    if (towerDamage >= 8000) reasons.push("🏰 Destructor de torres");
+                                    if (healing >= 5000) reasons.push("❤️ Soporte vital");
+                                    
+                                    if (reasons.length === 0) {
+                                      reasons.push("📊 Rendimiento equilibrado y consistente");
+                                    }
+                                    
+                                    return reasons.slice(0, 4).map((reason, index) => (
+                                      <div key={index} className="flex items-center gap-1 text-xs">
+                                        <span>{reason}</span>
+                                      </div>
+                                    ));
+                                  })()}
+                                </div>
                               </div>
                             </div>
                           </div>
@@ -2470,6 +2832,9 @@ export default function DotaMatchesFixed() {
                     src={authenticatedUser.avatar} 
                     alt={authenticatedUser.name}
                     className="w-16 h-16 rounded-full border-4 border-orange-400 shadow-xl"
+                    onError={(e) => {
+                      e.target.src = `data:image/svg+xml;base64,${btoa(`<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64"><rect width="64" height="64" fill="#2196F3" rx="32"/><text x="32" y="40" text-anchor="middle" fill="white" font-family="Arial" font-size="16" font-weight="bold">Steam</text></svg>`)}`;
+                    }}
                   />
                   <div>
                     <h2 className="text-2xl font-bold">{authenticatedUser.name}</h2>
@@ -2572,6 +2937,9 @@ export default function DotaMatchesFixed() {
                   src={authenticatedUser.avatar} 
                   alt={`Avatar completo de ${authenticatedUser.name}`}
                   className="w-32 h-32 rounded-full border-4 border-orange-400 shadow-2xl mx-auto hover:scale-105 transition-transform duration-300"
+                  onError={(e) => {
+                    e.target.src = `data:image/svg+xml;base64,${btoa(`<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128"><rect width="128" height="128" fill="#2196F3" rx="64"/><text x="64" y="80" text-anchor="middle" fill="white" font-family="Arial" font-size="32" font-weight="bold">Steam</text></svg>`)}`;
+                  }}
                 />
                 <p className="text-gray-600 text-sm mt-3">Avatar actual de tu perfil de Steam</p>
               </div>

@@ -242,7 +242,8 @@ app.get('/api/auth/steam/friends', async (req, res) => {
       });
       
     } catch (steamError) {
-      console.log('⚠️ No se pudo obtener amigos de Steam, usando lista predefinida');
+      console.log('⚠️ No se pudo obtener amigos de Steam:', steamError.message);
+      console.log('⚠️ Usando lista predefinida para demostración');
       
       // Lista de amigos predefinida para casos donde el perfil es privado
       const predefinedFriends = [
@@ -251,9 +252,45 @@ app.get('/api/auth/steam/friends', async (req, res) => {
           personaname: 'lixo_kkk',
           profileurl: 'https://steamcommunity.com/profiles/76561198097432092',
           avatar: 'https://avatars.steamstatic.com/avatar.jpg',
-          personastate: 0,
+          personastate: 1,
           lastlogoff: Math.floor(Date.now() / 1000),
-          realname: 'Amigo conocido'
+          realname: 'Amigo conocido 1'
+        },
+        {
+          steamid: '76561198045611095',
+          personaname: 'Player2',
+          profileurl: 'https://steamcommunity.com/profiles/76561198045611095',
+          avatar: 'https://avatars.steamstatic.com/avatar.jpg',
+          personastate: 2,
+          lastlogoff: Math.floor(Date.now() / 1000) - 3600,
+          realname: 'Amigo conocido 2'
+        },
+        {
+          steamid: '76561198078901234',
+          personaname: 'GamerPro',
+          profileurl: 'https://steamcommunity.com/profiles/76561198078901234',
+          avatar: 'https://avatars.steamstatic.com/avatar.jpg',
+          personastate: 0,
+          lastlogoff: Math.floor(Date.now() / 1000) - 7200,
+          realname: 'Amigo conocido 3'
+        },
+        {
+          steamid: '76561198123456789',
+          personaname: 'DotaPlayer',
+          profileurl: 'https://steamcommunity.com/profiles/76561198123456789',
+          avatar: 'https://avatars.steamstatic.com/avatar.jpg',
+          personastate: 3,
+          lastlogoff: Math.floor(Date.now() / 1000) - 1800,
+          realname: 'Amigo conocido 4'
+        },
+        {
+          steamid: '76561198567890123',
+          personaname: 'SteamUser',
+          profileurl: 'https://steamcommunity.com/profiles/76561198567890123',
+          avatar: 'https://avatars.steamstatic.com/avatar.jpg',
+          personastate: 1,
+          lastlogoff: Math.floor(Date.now() / 1000) - 900,
+          realname: 'Amigo conocido 5'
         }
       ];
       
@@ -307,6 +344,40 @@ app.get('/api/steam/profile/:steamId', async (req, res) => {
       error: 'Error obteniendo perfil de Steam',
       details: process.env.NODE_ENV === 'development' ? error.message : undefined
     });
+  }
+});
+
+// Endpoint para obtener perfil de Steam
+app.get('/api/auth/steam/profile', async (req, res) => {
+  try {
+    const { steamId } = req.query;
+    
+    if (!steamId) {
+      return res.status(400).json({ error: 'Steam ID requerido' });
+    }
+
+    console.log(`🔍 Obteniendo perfil de Steam para ID: ${steamId}`);
+    
+    const steamApiUrl = `https://api.steampowered.com/ISteamUser/GetPlayerSummaries/v0002/?key=${process.env.STEAM_API_KEY}&steamids=${steamId}`;
+    const response = await fetch(steamApiUrl);
+    
+    if (!response.ok) {
+      throw new Error(`Steam API error: ${response.status}`);
+    }
+    
+    const data = await response.json();
+    
+    if (!data.response || !data.response.players || data.response.players.length === 0) {
+      return res.status(404).json({ error: 'Usuario de Steam no encontrado' });
+    }
+    
+    const playerData = data.response.players[0];
+    console.log(`✅ Perfil de Steam obtenido: ${playerData.personaname}`);
+    
+    res.json(playerData);
+  } catch (error) {
+    console.error('❌ Error obteniendo perfil de Steam:', error);
+    res.status(500).json({ error: 'Error interno del servidor' });
   }
 });
 
