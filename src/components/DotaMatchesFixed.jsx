@@ -149,7 +149,7 @@ export default function DotaMatchesFixed() {
       
       // Cargar automáticamente los amigos después de la autenticación
       console.log('👥 Cargando amigos automáticamente después de la autenticación...');
-      await fetchSteamFriends(steam64Id); // Usar Steam ID de 64 bits para la API
+      await fetchSteamFriends(steamId); // Usar Steam ID del usuario autenticado
       
       // Limpiar la URL
       window.history.replaceState({}, document.title, window.location.pathname);
@@ -236,17 +236,22 @@ export default function DotaMatchesFixed() {
     }
   };
 
+  // Función para convertir Steam64 a Steam32
+  const convertSteam64ToSteam32 = (steam64) => {
+    if (!steam64 || steam64.trim() === "") return "";
+    
+    const steam64Num = BigInt(steam64);
+    // Steam32 = Steam64 - 76561197960265728
+    const steam32 = steam64Num - BigInt("76561197960265728");
+    return steam32.toString();
+  };
+
   // Obtener Steam IDs del usuario autenticado
-  // Usar el Steam ID del usuario autenticado o el hardcodeado como fallback
   const authenticatedSteam64Id = authenticatedUser?.steamID || "";
   
-  // Tu Steam ID real: 76561198033076015 (64 bits) = 72810287 (32 bits)
-  const fallbackSteam64Id = "76561198033076015";
-  const fallbackSteam32Id = "72810287"; // Steam ID correcto para OpenDota
-  
-  // Forzar el uso del Steam ID correcto para evitar problemas de conversión
-  const steam64Id = fallbackSteam64Id; // Siempre usar tu Steam ID de 64 bits correcto
-  const steamId = fallbackSteam32Id;   // Siempre usar tu Steam ID de 32 bits correcto
+  // Convertir Steam ID de 64 bits a 32 bits si está disponible
+  const steam64Id = authenticatedSteam64Id || "";
+  const steamId = authenticatedSteam64Id ? convertSteam64ToSteam32(authenticatedSteam64Id) : "";
   
 
   // Manejar callback de Steam
@@ -806,6 +811,11 @@ export default function DotaMatchesFixed() {
     
     try {
       console.log(`🆔 Cargando partidas para Steam ID: ${steamId} con filtro: ${timeFilter}`);
+      
+      // Verificar que tenemos un Steam ID válido
+      if (!steamId || steamId.trim() === "") {
+        throw new Error("No hay Steam ID disponible. Por favor, auténticate con Steam primero.");
+      }
       
       // Cargar partidas reales desde OpenDota API
       // OpenDota requiere Steam ID de 32 bits (Account ID)
@@ -1955,7 +1965,12 @@ export default function DotaMatchesFixed() {
             </button>
             <button
               onClick={() => {
-                const testUrl = `https://api.opendota.com/api/players/${steamId}/matches?lobby_type=7`;
+                const testSteamId = steamId || steam64Id || authenticatedSteam64Id;
+                if (!testSteamId) {
+                  console.log('❌ No hay Steam ID disponible para la prueba');
+                  return;
+                }
+                const testUrl = `https://api.opendota.com/api/players/${testSteamId}/matches?lobby_type=7`;
                 console.log('🧪 Probando API de OpenDota directamente...');
                 console.log('🧪 URL de prueba:', testUrl);
                 fetch(testUrl)
