@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useCallback } from 'react';
+import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
 
 const AuthContext = createContext();
 
@@ -11,13 +11,32 @@ export const useAuth = () => {
 };
 
 export const AuthProvider = ({ children }) => {
-  const [user, setUser] = useState(null);
+  // Cargar estado inicial desde localStorage
+  const [user, setUser] = useState(() => {
+    try {
+      const savedUser = localStorage.getItem('dota-matches-user');
+      return savedUser ? JSON.parse(savedUser) : null;
+    } catch (error) {
+      console.error('Error cargando usuario desde localStorage:', error);
+      return null;
+    }
+  });
+  
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [friends, setFriends] = useState([]);
   const [loadingFriends, setLoadingFriends] = useState(false);
 
   const isAuthenticated = !!user;
+
+  // Persistir cambios de usuario en localStorage
+  useEffect(() => {
+    if (user) {
+      localStorage.setItem('dota-matches-user', JSON.stringify(user));
+    } else {
+      localStorage.removeItem('dota-matches-user');
+    }
+  }, [user]);
 
   const login = useCallback((userData) => {
     console.log('🔐 AuthContext - Login:', userData);
@@ -32,8 +51,8 @@ export const AuthProvider = ({ children }) => {
     setFriends([]);
     setLoadingFriends(false);
     
-    // Limpiar localStorage y sessionStorage
-    localStorage.clear();
+    // Limpiar datos específicos de la app
+    localStorage.removeItem('dota-matches-user');
     sessionStorage.clear();
     
     // Limpiar cookies si las hay
