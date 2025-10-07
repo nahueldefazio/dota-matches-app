@@ -211,7 +211,7 @@ export default function DotaMatchesFixed() {
     try {
       
       // Usar la API del backend en lugar de simular
-      const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'https://dota-matches-2pehfujau-nahueldefazios-projects.vercel.app';
+      const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'https://dota-matches-jw2gbvev0-nahueldefazios-projects.vercel.app';
       const response = await fetch(`${apiBaseUrl}/api/auth/steam/friends?steamId=${steamIdToUse}`);
       
       if (!response.ok) {

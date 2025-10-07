@@ -745,7 +745,7 @@ export default function DotaMatches() {
       console.log(`🆔 Obteniendo amigos para Steam ID: ${steam64Id}`);
       
       // Usar la API del backend en lugar de peticiones directas
-      const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'https://dota-matches-9hzo0po8h-nahueldefazios-projects.vercel.app';
+      const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'https://dota-matches-jw2gbvev0-nahueldefazios-projects.vercel.app';
       const response = await fetch(`${apiBaseUrl}/api/auth/steam/friends?steamId=${steam64Id}`);
       
       if (!response.ok) {
