@@ -5,7 +5,7 @@ import { useSteamAuth } from '../hooks/useSteamAuth';
  * Componente de autenticación con Steam
  * Maneja el login/logout y muestra la información del usuario
  */
-export default function SteamAuth() {
+export default function SteamAuth({ onLoginSuccess }) {
   const {
     user,
     loading,
@@ -25,6 +25,13 @@ export default function SteamAuth() {
       handleSteamCallback();
     }
   }, [isSteamCallback, isAuthenticated, loading, handleSteamCallback]);
+
+  // Efecto para llamar al callback cuando el usuario se autentica
+  useEffect(() => {
+    if (isAuthenticated && user && onLoginSuccess) {
+      onLoginSuccess();
+    }
+  }, [isAuthenticated, user, onLoginSuccess]);
 
   // Función para formatear la fecha
   const formatDate = (dateString) => {
@@ -229,6 +236,21 @@ export default function SteamAuth() {
     );
   }
 
-  // Estado inicial - no mostrar nada
-  return null;
+  // Estado inicial - mostrar botón de login
+  return (
+    <div className="text-center">
+      <button
+        onClick={loginWithSteam}
+        className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg transition-colors duration-200 flex items-center justify-center mx-auto"
+      >
+        <svg className="w-6 h-6 mr-2" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+        </svg>
+        Iniciar Sesión con Steam
+      </button>
+      {error && (
+        <p className="text-red-600 mt-4">{error}</p>
+      )}
+    </div>
+  );
 }

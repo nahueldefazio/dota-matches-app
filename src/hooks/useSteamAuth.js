@@ -192,10 +192,27 @@ export const useSteamAuth = () => {
    * Cierra la sesión del usuario
    */
   const logout = useCallback(() => {
+    // Limpiar todos los estados
     setUser(null);
     setError(null);
     setFriends([]);
-    // Limpiar cualquier dato almacenado localmente si es necesario
+    setLoadingFriends(false);
+    
+    // Limpiar localStorage y sessionStorage
+    localStorage.clear();
+    sessionStorage.clear();
+    
+    // Limpiar cookies si las hay
+    document.cookie.split(";").forEach((c) => {
+      const eqPos = c.indexOf("=");
+      const name = eqPos > -1 ? c.substr(0, eqPos) : c;
+      document.cookie = name + "=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/";
+    });
+    
+    // Limpiar la URL para remover parámetros de Steam
+    window.history.replaceState({}, document.title, window.location.pathname);
+    
+    console.log('🧹 Sesión cerrada - Todos los datos han sido eliminados');
   }, []);
 
   /**
