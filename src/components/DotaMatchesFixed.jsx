@@ -14,6 +14,7 @@ export default function DotaMatchesFixed() {
   const [loadingMatchDetails, setLoadingMatchDetails] = useState(false);
   const [showSteamProfile, setShowSteamProfile] = useState(false);
   const [showCalendar, setShowCalendar] = useState(false);
+  const [hasShownInitialSelector, setHasShownInitialSelector] = useState(false);
   const [customStartDate, setCustomStartDate] = useState('');
   const [customEndDate, setCustomEndDate] = useState('');
   const [matchesLoaded, setMatchesLoaded] = useState(false);
@@ -286,6 +287,15 @@ export default function DotaMatchesFixed() {
       handleSteamCallback();
     }
   }, []);
+
+  // Mostrar selector automáticamente después del login
+  useEffect(() => {
+    if (authenticatedUser && !hasShownInitialSelector && !matchesLoaded) {
+      console.log('🎯 Usuario autenticado por primera vez - Mostrando selector de período');
+      setShowCalendar(true);
+      setHasShownInitialSelector(true);
+    }
+  }, [authenticatedUser, hasShownInitialSelector, matchesLoaded]);
 
   // Recalcular estadísticas cuando cambien los amigos detectados
   useEffect(() => {
@@ -1666,6 +1676,21 @@ export default function DotaMatchesFixed() {
               
               {showCalendar && (
                 <div className="bg-gradient-to-br from-slate-800/95 via-slate-900/95 to-slate-800/95 backdrop-blur-lg border border-orange-400/30 rounded-2xl p-6 space-y-6 shadow-2xl animate-in slide-in-from-top-2 duration-300">
+                  {/* Mensaje de bienvenida para primera vez */}
+                  {!matchesLoaded && (
+                    <div className="bg-gradient-to-r from-blue-500/20 to-purple-500/20 border border-blue-400/30 rounded-xl p-4 mb-4">
+                      <div className="flex items-center space-x-3">
+                        <div className="text-2xl">👋</div>
+                        <div>
+                          <h3 className="text-white font-semibold text-lg">¡Bienvenido!</h3>
+                          <p className="text-blue-200 text-sm">
+                            Selecciona un período para cargar tus partidas de Dota 2
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                  
                   {/* Header del calendario */}
                   <div className="text-center">
                     <h4 className="text-xl font-bold text-white mb-2 flex items-center justify-center gap-2">
