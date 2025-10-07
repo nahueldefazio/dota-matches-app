@@ -79,11 +79,16 @@ export default function SteamAuth({ onLoginSuccess }) {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center p-8">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-4 border-blue-200 mx-auto mb-4"></div>
-          <div className="animate-spin rounded-full h-12 w-12 border-4 border-blue-500 border-t-transparent absolute top-8 left-1/2 transform -translate-x-1/2"></div>
-          <p className="text-gray-600">Procesando autenticación con Steam...</p>
+      <div className="flex flex-col items-center justify-center p-8">
+        <div className="relative">
+          <div className="animate-spin rounded-full h-16 w-16 border-4 border-blue-200/30"></div>
+          <div className="animate-spin rounded-full h-16 w-16 border-4 border-blue-500 border-t-transparent absolute top-0 left-0"></div>
+        </div>
+        <p className="text-blue-100 mt-4 text-lg font-medium">Procesando autenticación con Steam...</p>
+        <div className="flex space-x-1 mt-2">
+          <div className="w-2 h-2 bg-blue-400 rounded-full animate-bounce"></div>
+          <div className="w-2 h-2 bg-blue-400 rounded-full animate-bounce" style={{animationDelay: '0.1s'}}></div>
+          <div className="w-2 h-2 bg-blue-400 rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
         </div>
       </div>
     );
@@ -243,15 +248,20 @@ export default function SteamAuth({ onLoginSuccess }) {
     <div className="text-center">
       <button
         onClick={loginWithSteam}
-        className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg transition-colors duration-200 flex items-center justify-center mx-auto"
+        className="group relative bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-bold py-4 px-8 rounded-2xl transition-all duration-300 transform hover:scale-105 hover:shadow-2xl flex items-center justify-center mx-auto min-w-[280px]"
       >
-        <svg className="w-6 h-6 mr-2" viewBox="0 0 24 24" fill="currentColor">
-          <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
-        </svg>
-        Iniciar Sesión con Steam
+        <div className="absolute inset-0 bg-gradient-to-r from-blue-600 to-purple-600 rounded-2xl blur opacity-75 group-hover:opacity-100 transition duration-300"></div>
+        <div className="relative flex items-center space-x-3">
+          <svg className="w-6 h-6" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+          </svg>
+          <span className="text-lg">Iniciar Sesión con Steam</span>
+        </div>
       </button>
       {error && (
-        <p className="text-red-600 mt-4">{error}</p>
+        <div className="mt-4 p-4 bg-red-500/10 border border-red-500/20 rounded-xl">
+          <p className="text-red-300 text-sm">{error}</p>
+        </div>
       )}
     </div>
   );
