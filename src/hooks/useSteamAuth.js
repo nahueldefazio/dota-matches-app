@@ -1,15 +1,13 @@
 import { useState, useCallback } from 'react';
+import { useAuth } from '../contexts/AuthContext';
 
 /**
  * Hook personalizado para manejar la autenticación con Steam
  * Proporciona funciones para iniciar sesión y obtener datos del usuario
  */
 export const useSteamAuth = () => {
-  const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
-  const [friends, setFriends] = useState([]);
-  const [loadingFriends, setLoadingFriends] = useState(false);
+  const authContext = useAuth();
+  const { user, loading, error, friends, loadingFriends, isAuthenticated, login, logout, setFriends, setLoading, setError, setLoadingFriends } = authContext;
 
   /**
    * Inicia el proceso de autenticación con Steam
@@ -97,7 +95,7 @@ export const useSteamAuth = () => {
           createdAt: new Date().toISOString()
         };
 
-        setUser(userData);
+        login(userData);
         console.log('✅ Usuario autenticado (fallback):', userData);
         
         // Cargar automáticamente los amigos después de la autenticación
@@ -124,7 +122,7 @@ export const useSteamAuth = () => {
         createdAt: new Date().toISOString()
       };
 
-      setUser(userData);
+      login(userData);
       console.log('✅ Usuario autenticado (real):', userData);
       
       // Cargar automáticamente los amigos después de la autenticación
@@ -226,29 +224,11 @@ export const useSteamAuth = () => {
   /**
    * Cierra la sesión del usuario
    */
-  const logout = useCallback(() => {
-    // Limpiar todos los estados
-    setUser(null);
-    setError(null);
-    setFriends([]);
-    setLoadingFriends(false);
-    
-    // Limpiar localStorage y sessionStorage
-    localStorage.clear();
-    sessionStorage.clear();
-    
-    // Limpiar cookies si las hay
-    document.cookie.split(";").forEach((c) => {
-      const eqPos = c.indexOf("=");
-      const name = eqPos > -1 ? c.substr(0, eqPos) : c;
-      document.cookie = name + "=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/";
-    });
-    
-    // Limpiar la URL para remover parámetros de Steam
-    window.history.replaceState({}, document.title, window.location.pathname);
-    
+  const logoutUser = useCallback(() => {
+    // Usar la función logout del contexto
+    logout();
     console.log('🧹 Sesión cerrada - Todos los datos han sido eliminados');
-  }, []);
+  }, [logout]);
 
   /**
    * Verifica si hay parámetros de Steam en la URL (callback)
@@ -266,7 +246,7 @@ export const useSteamAuth = () => {
     loadingFriends,
     loginWithSteam,
     handleSteamCallback,
-    logout,
+    logout: logoutUser,
     isSteamCallback,
     isAuthenticated: !!user,
     fetchSteamFriends
