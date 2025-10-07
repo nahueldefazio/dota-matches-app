@@ -6,6 +6,7 @@ const Login = () => {
   const navigate = useNavigate();
 
   const handleLoginSuccess = () => {
+    console.log('🎯 Login exitoso - Redirigiendo a la página principal...');
     // Redirigir a la página principal después del login exitoso
     navigate('/');
   };

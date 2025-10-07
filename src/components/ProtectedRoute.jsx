@@ -5,6 +5,8 @@ import { useSteamAuth } from '../hooks/useSteamAuth';
 const ProtectedRoute = ({ children }) => {
   const { isAuthenticated, loading } = useSteamAuth();
 
+  console.log('🛡️ ProtectedRoute - Estado:', { isAuthenticated, loading });
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-900 via-purple-900 to-indigo-900 flex items-center justify-center">

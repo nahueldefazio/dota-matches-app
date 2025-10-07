@@ -28,7 +28,9 @@ export default function SteamAuth({ onLoginSuccess }) {
 
   // Efecto para llamar al callback cuando el usuario se autentica
   useEffect(() => {
+    console.log('🔍 SteamAuth - Estado de autenticación:', { isAuthenticated, user: !!user, onLoginSuccess: !!onLoginSuccess });
     if (isAuthenticated && user && onLoginSuccess) {
+      console.log('🚀 Ejecutando callback de login exitoso...');
       onLoginSuccess();
     }
   }, [isAuthenticated, user, onLoginSuccess]);

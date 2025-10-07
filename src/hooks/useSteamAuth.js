@@ -98,6 +98,7 @@ export const useSteamAuth = () => {
         };
 
         setUser(userData);
+        console.log('✅ Usuario autenticado (fallback):', userData);
         
         // Cargar automáticamente los amigos después de la autenticación
         console.log('👥 Cargando amigos automáticamente...');
@@ -124,6 +125,7 @@ export const useSteamAuth = () => {
       };
 
       setUser(userData);
+      console.log('✅ Usuario autenticado (real):', userData);
       
       // Cargar automáticamente los amigos después de la autenticación
       console.log('👥 Cargando amigos automáticamente...');
