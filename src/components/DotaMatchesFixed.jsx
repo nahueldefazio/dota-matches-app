@@ -927,12 +927,16 @@ export default function DotaMatchesFixed() {
       setStatsReady(false); // Resetear estadísticas para nuevas partidas
       setCompanionsAnalysisComplete(false); // Resetear análisis de compañeros
           
-          // Cargar héroes si no están cargados
-          if (Object.keys(heroes).length === 0) {
-            await fetchHeroes();
-          }
+      // Cargar héroes en paralelo si no están cargados
+      const heroesPromise = Object.keys(heroes).length === 0 ? fetchHeroes() : Promise.resolve();
+      
+      // Ejecutar ambas tareas en paralelo
+      await Promise.all([
+        heroesPromise,
+        Promise.resolve() // Placeholder para futuras tareas paralelas
+      ]);
           
-          console.log(`✅ ${filteredData.length} partidas cargadas con filtro ${timeFilter}`);
+      console.log(`✅ ${filteredData.length} partidas cargadas con filtro ${timeFilter}`);
       
           // Verificar amigos automáticamente siempre después de cargar partidas
           console.log('🔄 Iniciando verificación automática de amigos...');
@@ -1113,13 +1117,15 @@ export default function DotaMatchesFixed() {
       setMatches(filteredData);
       setMatchesLoaded(true);
       
-      // Cargar héroes si no están cargados
-      if (Object.keys(heroes).length === 0) {
-        await fetchHeroes();
-      }
+      // Cargar héroes en paralelo si no están cargados
+      const heroesPromise = Object.keys(heroes).length === 0 ? fetchHeroes() : Promise.resolve();
       
-      // Iniciar verificación automática con los datos filtrados
-      executeVerification(filteredData);
+      // Ejecutar tareas en paralelo
+      await Promise.all([
+        heroesPromise,
+        // Iniciar verificación automática con los datos filtrados
+        Promise.resolve(executeVerification(filteredData))
+      ]);
       
     } catch (error) {
       console.error('Error cargando partidas:', error);
