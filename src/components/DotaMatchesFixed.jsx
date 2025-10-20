@@ -555,27 +555,69 @@ export default function DotaMatchesFixed() {
       heroDamage: Math.floor(player.hero_damage * 0.7), // 70% de damage en late game
     };
     
+    // Análisis de Net Worth a lo largo de la partida
+    const netWorth = player.net_worth || 0;
+    const gpm = player.gold_per_min || 0;
+    const xpm = player.xp_per_min || 0;
+    
+    // Simular progresión de Net Worth basada en GPM
+    const earlyNetWorth = Math.floor(netWorth * 0.3); // 30% del net worth en early game
+    const midNetWorth = Math.floor(netWorth * 0.6); // 60% del net worth en mid game
+    const lateNetWorth = netWorth; // 100% del net worth en late game
+    
+    // Calcular GPM por fases
+    const earlyGPM = Math.floor(gpm * 0.8); // GPM más bajo en early game
+    const midGPM = Math.floor(gpm * 1.1); // GPM más alto en mid game
+    const lateGPM = Math.floor(gpm * 0.9); // GPM decayendo en late game
+    
+    // Análisis de XPM por fases
+    const earlyXPM = Math.floor(xpm * 0.7); // XPM más bajo en early game
+    const midXPM = Math.floor(xpm * 1.2); // XPM más alto en mid game
+    const lateXPM = Math.floor(xpm * 0.8); // XPM decayendo en late game
+    
     // Calcular KDA temprano vs tardío
     const earlyKDA = (earlyGame.kills + earlyGame.assists) / Math.max(earlyGame.deaths, 1);
     const lateKDA = (lateGame.kills + lateGame.assists) / Math.max(lateGame.deaths, 1);
     
-    // Calcular score de rendimiento temprano
+    // Calcular score de rendimiento temprano (incluyendo Net Worth)
     let earlyScore = 0;
-    if (earlyKDA >= 3) earlyScore += 40;
-    else if (earlyKDA >= 2) earlyScore += 35;
-    else if (earlyKDA >= 1.5) earlyScore += 30;
-    else if (earlyKDA >= 1) earlyScore += 25;
-    else if (earlyKDA >= 0.5) earlyScore += 15;
+    if (earlyKDA >= 3) earlyScore += 30;
+    else if (earlyKDA >= 2) earlyScore += 25;
+    else if (earlyKDA >= 1.5) earlyScore += 20;
+    else if (earlyKDA >= 1) earlyScore += 15;
+    else if (earlyKDA >= 0.5) earlyScore += 10;
     else earlyScore += 5;
     
-    // Calcular score de rendimiento tardío
+    // Bonus por Net Worth temprano
+    if (earlyNetWorth >= 10000) earlyScore += 20;
+    else if (earlyNetWorth >= 8000) earlyScore += 15;
+    else if (earlyNetWorth >= 6000) earlyScore += 10;
+    else if (earlyNetWorth >= 4000) earlyScore += 5;
+    
+    // Bonus por GPM temprano
+    if (earlyGPM >= 500) earlyScore += 15;
+    else if (earlyGPM >= 400) earlyScore += 10;
+    else if (earlyGPM >= 300) earlyScore += 5;
+    
+    // Calcular score de rendimiento tardío (incluyendo Net Worth)
     let lateScore = 0;
-    if (lateKDA >= 3) lateScore += 40;
-    else if (lateKDA >= 2) lateScore += 35;
-    else if (lateKDA >= 1.5) lateScore += 30;
-    else if (lateKDA >= 1) lateScore += 25;
-    else if (lateKDA >= 0.5) lateScore += 15;
+    if (lateKDA >= 3) lateScore += 30;
+    else if (lateKDA >= 2) lateScore += 25;
+    else if (lateKDA >= 1.5) lateScore += 20;
+    else if (lateKDA >= 1) lateScore += 15;
+    else if (lateKDA >= 0.5) lateScore += 10;
     else lateScore += 5;
+    
+    // Bonus por Net Worth tardío
+    if (lateNetWorth >= 20000) lateScore += 20;
+    else if (lateNetWorth >= 15000) lateScore += 15;
+    else if (lateNetWorth >= 10000) lateScore += 10;
+    else if (lateNetWorth >= 5000) lateScore += 5;
+    
+    // Bonus por GPM tardío
+    if (lateGPM >= 600) lateScore += 15;
+    else if (lateGPM >= 500) lateScore += 10;
+    else if (lateGPM >= 400) lateScore += 5;
     
     // Agregar factores adicionales
     const earlyLHPerMin = earlyGame.lastHits / Math.max(matchDuration / 60 * 0.4, 1);
@@ -644,7 +686,32 @@ export default function DotaMatchesFixed() {
       description: throwDescription,
       earlyKDA: earlyKDA.toFixed(2),
       lateKDA: lateKDA.toFixed(2),
-      isThrow: throwPercentage >= 20
+      isThrow: throwPercentage >= 20,
+      // Métricas de Net Worth
+      earlyNetWorth,
+      midNetWorth,
+      lateNetWorth,
+      earlyGPM,
+      midGPM,
+      lateGPM,
+      earlyXPM,
+      midXPM,
+      lateXPM,
+      netWorthProgression: {
+        early: earlyNetWorth,
+        mid: midNetWorth,
+        late: lateNetWorth
+      },
+      gpmProgression: {
+        early: earlyGPM,
+        mid: midGPM,
+        late: lateGPM
+      },
+      xpmProgression: {
+        early: earlyXPM,
+        mid: midXPM,
+        late: lateXPM
+      }
     };
   };
 
@@ -2425,10 +2492,11 @@ export default function DotaMatchesFixed() {
 
       {/* Partidas cargadas - Solo mostrar cuando el análisis esté completo */}
       {matches.length > 0 && companionsAnalysisComplete && (
-        <div className="bg-white p-4 rounded-lg shadow-md">
-          <h2 className="text-lg font-semibold mb-3">
-            Partidas cargadas: {matches.length} (Filtro: {timeFilter})
-          </h2>
+        <div className="relative z-10 max-w-8xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="bg-white p-4 rounded-lg shadow-md">
+            <h2 className="text-lg font-semibold mb-3">
+              Partidas cargadas: {matches.length} (Filtro: {timeFilter})
+            </h2>
           
           {/* Mensaje de espera para estadísticas */}
           {!statsReady && matches.length > 0 && (
@@ -2693,8 +2761,9 @@ export default function DotaMatchesFixed() {
                                         </div>
                                       </div>
                                       
-                                      {/* Progresión temporal */}
-                                      <div className="bg-black/20 rounded-lg p-3">
+                                      {/* Progresión temporal con Net Worth */}
+                                      <div className="bg-black/20 rounded-lg p-4 space-y-3">
+                                        {/* Progresión de Score */}
                                         <div className="flex items-center justify-between text-sm">
                                           <div className="text-center">
                                             <div className="text-green-400 font-bold">Early Game</div>
@@ -2705,12 +2774,73 @@ export default function DotaMatchesFixed() {
                                             <div className="w-full bg-gray-700 rounded-full h-2">
                                               <div className="bg-gradient-to-r from-green-500 to-red-500 h-2 rounded-full"></div>
                                             </div>
-                                            <div className="text-center text-xs text-gray-400 mt-1">Progresión</div>
+                                            <div className="text-center text-xs text-gray-400 mt-1">Progresión de Score</div>
                                           </div>
                                           <div className="text-center">
                                             <div className="text-red-400 font-bold">Late Game</div>
                                             <div className="text-white">{throwData.lateScore}pts</div>
                                             <div className="text-gray-300 text-xs">KDA: {throwData.lateKDA}</div>
+                                          </div>
+                                        </div>
+                                        
+                                        {/* Progresión de Net Worth */}
+                                        <div className="border-t border-gray-600 pt-3">
+                                          <div className="text-xs text-gray-400 mb-2 text-center">💰 Progresión de Net Worth</div>
+                                          <div className="flex items-center justify-between text-xs">
+                                            <div className="text-center">
+                                              <div className="text-green-400 font-bold">Early</div>
+                                              <div className="text-white">{throwData.earlyNetWorth.toLocaleString()}</div>
+                                              <div className="text-gray-300">GPM: {throwData.earlyGPM}</div>
+                                            </div>
+                                            <div className="flex-1 mx-2">
+                                              <div className="w-full bg-gray-700 rounded-full h-1.5">
+                                                <div className="bg-gradient-to-r from-green-500 via-yellow-500 to-red-500 h-1.5 rounded-full"></div>
+                                              </div>
+                                            </div>
+                                            <div className="text-center">
+                                              <div className="text-yellow-400 font-bold">Mid</div>
+                                              <div className="text-white">{throwData.midNetWorth.toLocaleString()}</div>
+                                              <div className="text-gray-300">GPM: {throwData.midGPM}</div>
+                                            </div>
+                                            <div className="flex-1 mx-2">
+                                              <div className="w-full bg-gray-700 rounded-full h-1.5">
+                                                <div className="bg-gradient-to-r from-yellow-500 to-red-500 h-1.5 rounded-full"></div>
+                                              </div>
+                                            </div>
+                                            <div className="text-center">
+                                              <div className="text-red-400 font-bold">Late</div>
+                                              <div className="text-white">{throwData.lateNetWorth.toLocaleString()}</div>
+                                              <div className="text-gray-300">GPM: {throwData.lateGPM}</div>
+                                            </div>
+                                          </div>
+                                        </div>
+                                        
+                                        {/* Progresión de XPM */}
+                                        <div className="border-t border-gray-600 pt-3">
+                                          <div className="text-xs text-gray-400 mb-2 text-center">⚡ Progresión de XPM</div>
+                                          <div className="flex items-center justify-between text-xs">
+                                            <div className="text-center">
+                                              <div className="text-blue-400 font-bold">Early</div>
+                                              <div className="text-white">{throwData.earlyXPM}</div>
+                                            </div>
+                                            <div className="flex-1 mx-2">
+                                              <div className="w-full bg-gray-700 rounded-full h-1.5">
+                                                <div className="bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 h-1.5 rounded-full"></div>
+                                              </div>
+                                            </div>
+                                            <div className="text-center">
+                                              <div className="text-purple-400 font-bold">Mid</div>
+                                              <div className="text-white">{throwData.midXPM}</div>
+                                            </div>
+                                            <div className="flex-1 mx-2">
+                                              <div className="w-full bg-gray-700 rounded-full h-1.5">
+                                                <div className="bg-gradient-to-r from-purple-500 to-pink-500 h-1.5 rounded-full"></div>
+                                              </div>
+                                            </div>
+                                            <div className="text-center">
+                                              <div className="text-pink-400 font-bold">Late</div>
+                                              <div className="text-white">{throwData.lateXPM}</div>
+                                            </div>
                                           </div>
                                         </div>
                                       </div>
