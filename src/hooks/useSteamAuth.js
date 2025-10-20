@@ -80,9 +80,12 @@ export const useSteamAuth = () => {
         
         if (profileResponse.ok) {
           const profileData = await profileResponse.json();
-          const player = profileData.response.players[0];
+          console.log('🔍 Datos de perfil recibidos:', profileData);
           
-          if (player) {
+          if (profileData.response && profileData.response.players && profileData.response.players.length > 0) {
+            const player = profileData.response.players[0];
+            console.log('🔍 Datos del jugador:', player);
+            
             const userData = {
               steamID: steamId,
               name: player.personaname || `Usuario Steam ${steamId.substring(0, 8)}`,
@@ -101,7 +104,11 @@ export const useSteamAuth = () => {
             await fetchSteamFriends(steamId);
             
             return userData;
+          } else {
+            console.log('❌ No se encontraron datos del jugador en la respuesta');
           }
+        } else {
+          console.log('❌ Error en la respuesta del perfil:', profileResponse.status);
         }
       } catch (error) {
         console.warn('⚠️ No se pudo obtener perfil real, usando datos simulados...', error);
