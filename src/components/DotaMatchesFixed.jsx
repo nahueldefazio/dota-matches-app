@@ -2713,16 +2713,24 @@ export default function DotaMatchesFixed() {
 
       {/* Popup de detalles de partida */}
       {showMatchPopup && selectedMatch && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-2xl">
+        <div className="fixed inset-0 bg-black bg-opacity-60 z-50 flex items-center justify-center p-4">
+          <div className="bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 rounded-2xl max-w-6xl w-full max-h-[95vh] overflow-y-auto shadow-2xl border border-slate-700/50">
             {/* Header del popup */}
-            <div className="sticky top-0 bg-gradient-to-r from-blue-600 to-purple-600 text-white p-4 rounded-t-lg">
+            <div className="sticky top-0 bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-600 text-white p-6 rounded-t-2xl border-b border-slate-700/50">
               <div className="flex justify-between items-center">
-                <h2 className="text-xl font-bold">Detalles de la partida</h2>
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
+                    <span className="text-2xl">🎮</span>
+                  </div>
+                  <div>
+                    <h2 className="text-2xl font-bold">Detalles de la partida</h2>
+                    <p className="text-blue-100 text-sm">ID: {selectedMatch.match_id}</p>
+                  </div>
+                </div>
                 <button
                   disabled={isBusy}
                   onClick={closeMatchPopup}
-                  className="text-white hover:text-gray-200 text-2xl font-bold"
+                  className="text-white hover:text-gray-200 text-3xl font-bold hover:bg-white/10 rounded-full w-10 h-10 flex items-center justify-center transition-all duration-200"
                 >
                   ×
                 </button>
@@ -2730,18 +2738,30 @@ export default function DotaMatchesFixed() {
             </div>
 
             {/* Contenido del popup */}
-            <div className="p-6">
-              {/* Información básica */}
-              <div className="grid grid-cols-2 gap-4 mb-6">
-                <div className="bg-gray-50 rounded-lg p-4">
-                  <h3 className="font-semibold text-gray-800 mb-2">📊 Información básica</h3>
-                  <div className="space-y-2 text-sm">
-                    <div><span className="font-medium">ID de partida:</span> {selectedMatch.match_id}</div>
-                    <div><span className="font-medium">Fecha:</span> {new Date(selectedMatch.start_time * 1000).toLocaleString('es-ES')}</div>
-                    <div><span className="font-medium">Duración:</span> {Math.floor(selectedMatch.duration / 60)} minutos</div>
-                    <div><span className="font-medium">Resultado:</span> 
-                      <span className={`ml-2 px-2 py-1 rounded-full text-xs font-semibold ${
-                        didWin(selectedMatch) ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+            <div className="p-8">
+              {/* Información principal */}
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+                {/* Información básica */}
+                <div className="bg-gradient-to-br from-slate-800/50 to-slate-900/50 rounded-2xl p-6 border border-slate-700/50 shadow-xl">
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center">
+                      <span className="text-white text-lg">📊</span>
+                    </div>
+                    <h3 className="text-lg font-bold text-white">Información básica</h3>
+                  </div>
+                  <div className="space-y-3">
+                    <div className="flex justify-between items-center">
+                      <span className="text-slate-300 text-sm">Fecha:</span>
+                      <span className="text-white font-medium">{new Date(selectedMatch.start_time * 1000).toLocaleString('es-ES')}</span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-slate-300 text-sm">Duración:</span>
+                      <span className="text-white font-medium">{Math.floor(selectedMatch.duration / 60)} minutos</span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-slate-300 text-sm">Resultado:</span>
+                      <span className={`px-3 py-1 rounded-full text-sm font-semibold ${
+                        didWin(selectedMatch) ? 'bg-green-500/20 text-green-400 border border-green-500/30' : 'bg-red-500/20 text-red-400 border border-red-500/30'
                       }`}>
                         {didWin(selectedMatch) ? '🏆 Victoria' : '💀 Derrota'}
                       </span>
@@ -2749,47 +2769,97 @@ export default function DotaMatchesFixed() {
                   </div>
                 </div>
 
-                <div className="bg-gray-50 rounded-lg p-4">
-                  <h3 className="font-semibold text-gray-800 mb-2">👥 Composición del equipo</h3>
-                  <div className="space-y-2 text-sm">
-                    <div><span className="font-medium">Party Size:</span> 
-                      <span className={`ml-2 px-2 py-1 rounded-full text-xs font-semibold ${
-                        getPartySize(selectedMatch) > 1 ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-800'
+                {/* Composición del equipo */}
+                <div className="bg-gradient-to-br from-slate-800/50 to-slate-900/50 rounded-2xl p-6 border border-slate-700/50 shadow-xl">
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className="w-10 h-10 bg-gradient-to-br from-green-500 to-emerald-600 rounded-xl flex items-center justify-center">
+                      <span className="text-white text-lg">👥</span>
+                    </div>
+                    <h3 className="text-lg font-bold text-white">Composición del equipo</h3>
+                  </div>
+                  <div className="space-y-3">
+                    <div className="flex justify-between items-center">
+                      <span className="text-slate-300 text-sm">Party Size:</span>
+                      <span className={`px-3 py-1 rounded-full text-sm font-semibold ${
+                        getPartySize(selectedMatch) > 1 ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30' : 'bg-gray-500/20 text-gray-400 border border-gray-500/30'
                       }`}>
                         {getPartySize(selectedMatch) > 1 ? '👥 Party' : '👤 Solo'} ({getPartySize(selectedMatch)})
                       </span>
                     </div>
                     {friendsInMatches[selectedMatch.match_id] && friendsInMatches[selectedMatch.match_id].length > 0 && (
-                      <div><span className="font-medium">Amigos detectados:</span> {friendsInMatches[selectedMatch.match_id].length}</div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-slate-300 text-sm">Amigos detectados:</span>
+                        <span className="text-white font-medium">{friendsInMatches[selectedMatch.match_id].length}</span>
+                      </div>
                     )}
-                    <div><span className="font-medium">Tipo de partida:</span> 
-                      <span className="ml-2 px-2 py-1 rounded-full text-xs bg-purple-100 text-purple-800">
+                    <div className="flex justify-between items-center">
+                      <span className="text-slate-300 text-sm">Tipo de partida:</span>
+                      <span className="px-3 py-1 rounded-full text-sm font-semibold bg-purple-500/20 text-purple-400 border border-purple-500/30">
                         {selectedMatch.lobby_type === 7 ? '🏆 Ranked' : '🎮 Normal'}
                       </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Estadísticas rápidas */}
+                <div className="bg-gradient-to-br from-slate-800/50 to-slate-900/50 rounded-2xl p-6 border border-slate-700/50 shadow-xl">
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className="w-10 h-10 bg-gradient-to-br from-orange-500 to-red-600 rounded-xl flex items-center justify-center">
+                      <span className="text-white text-lg">⚡</span>
+                    </div>
+                    <h3 className="text-lg font-bold text-white">Estadísticas rápidas</h3>
+                  </div>
+                  <div className="space-y-3">
+                    <div className="flex justify-between items-center">
+                      <span className="text-slate-300 text-sm">KDA:</span>
+                      <span className="text-white font-medium">{selectedMatch.kda || 'N/A'}</span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-slate-300 text-sm">GPM:</span>
+                      <span className="text-white font-medium">{selectedMatch.gold_per_min || 'N/A'}</span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-slate-300 text-sm">XPM:</span>
+                      <span className="text-white font-medium">{selectedMatch.xp_per_min || 'N/A'}</span>
                     </div>
                   </div>
                 </div>
               </div>
 
               {/* Héroe jugado */}
-              <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg p-4 mb-6">
-                <h3 className="font-semibold text-gray-800 mb-3">🦸 Héroe jugado</h3>
-                <div className="flex items-center space-x-4">
+              <div className="bg-gradient-to-br from-slate-800/50 to-slate-900/50 rounded-2xl p-6 mb-8 border border-slate-700/50 shadow-xl">
+                <div className="flex items-center gap-3 mb-6">
+                  <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-pink-600 rounded-xl flex items-center justify-center">
+                    <span className="text-white text-lg">🦸</span>
+                  </div>
+                  <h3 className="text-lg font-bold text-white">Héroe jugado</h3>
+                </div>
+                <div className="flex items-center gap-6">
                   {selectedMatch.hero_id && (
-                    <img 
-                      src={getHeroImageUrl(selectedMatch.hero_id)}
-                      alt={`${heroes[selectedMatch.hero_id] || selectedMatch.hero_id}`}
-                      className="w-20 h-24 object-cover rounded-lg border-2 border-gray-300 shadow-md"
-                      onError={(e) => {
-                        e.target.style.display = 'none';
-                      }}
-                    />
+                    <div className="relative">
+                      <img 
+                        src={getHeroImageUrl(selectedMatch.hero_id)}
+                        alt={`${heroes[selectedMatch.hero_id] || selectedMatch.hero_id}`}
+                        className="w-20 h-24 object-cover rounded-2xl shadow-2xl border-2 border-slate-600/50"
+                        onError={(e) => {
+                          e.target.src = getHeroImageFallbackUrl(selectedMatch.hero_id);
+                        }}
+                      />
+                      <div className="absolute -top-2 -right-2 w-6 h-6 bg-gradient-to-br from-yellow-400 to-orange-500 rounded-full flex items-center justify-center">
+                        <span className="text-white text-xs font-bold">★</span>
+                      </div>
+                    </div>
                   )}
-                  <div>
-                    <h4 className="text-xl font-bold text-gray-800">
+                  <div className="flex-1">
+                    <h4 className="text-xl font-bold text-white mb-2">
                       {heroes[selectedMatch.hero_id] || `Héroe ID: ${selectedMatch.hero_id}`}
                     </h4>
-                    <p className="text-gray-600">Tu héroe en esta partida</p>
+                    <div className="flex items-center gap-4">
+                      <span className="text-slate-300 text-sm">ID: {selectedMatch.hero_id}</span>
+                      <span className="px-3 py-1 bg-purple-500/20 text-purple-400 rounded-full text-sm font-semibold border border-purple-500/30">
+                        Tu héroe en esta partida
+                      </span>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -3421,15 +3491,27 @@ export default function DotaMatchesFixed() {
             )}
 
             {/* Footer del popup */}
-            <div className="sticky bottom-0 bg-gray-50 p-4 rounded-b-lg border-t">
-              <div className="flex justify-end">
-                <button
-                  disabled={isBusy}
-                  onClick={closeMatchPopup}
-                  className="px-6 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg transition-colors"
-                >
-                  Cerrar
-                </button>
+            <div className="sticky bottom-0 bg-gradient-to-r from-slate-800/90 to-slate-900/90 backdrop-blur-xl p-6 rounded-b-2xl border-t border-slate-700/50">
+              <div className="flex justify-between items-center">
+                <div className="text-slate-400 text-sm">
+                  Análisis completo de la partida
+                </div>
+                <div className="flex gap-3">
+                  <button
+                    disabled={isBusy}
+                    onClick={() => window.open(`https://www.opendota.com/matches/${selectedMatch.match_id}`, '_blank')}
+                    className="px-4 py-2 bg-blue-600/20 hover:bg-blue-600/30 text-blue-400 rounded-lg transition-all duration-200 border border-blue-500/30 hover:border-blue-500/50 text-sm font-medium"
+                  >
+                    🌐 Ver en OpenDota
+                  </button>
+                  <button
+                    disabled={isBusy}
+                    onClick={closeMatchPopup}
+                    className="px-6 py-2 bg-gradient-to-r from-slate-600 to-slate-700 hover:from-slate-700 hover:to-slate-800 text-white rounded-lg transition-all duration-200 font-medium shadow-lg"
+                  >
+                    Cerrar
+                  </button>
+                </div>
               </div>
             </div>
           </div>
