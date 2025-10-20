@@ -205,9 +205,9 @@ export default function DotaMatchesFixed() {
     return steam32.toString();
   };
 
-  // Estados para Steam ID
-  const [steamId, setSteamId] = useState("");
-  const [steam64Id, setSteam64Id] = useState("");
+  // Obtener Steam IDs del usuario autenticado
+  const steam64Id = authenticatedUser?.steamID || "";
+  const steamId = steam64Id ? convertSteam64ToSteam32(steam64Id) : "";
   
 
   // Manejar callback de Steam
@@ -739,11 +739,12 @@ export default function DotaMatchesFixed() {
 
   const loadMatchesWithTimeFilter = async (timeFilter) => {
     console.log('🔍 Debug - Variables de estado:');
+    console.log('  - authenticatedUser:', authenticatedUser);
     console.log('  - steamId:', steamId);
     console.log('  - steam64Id:', steam64Id);
     
-    if (!steamId || steamId.trim() === "") {
-      alert('Primero debes ingresar un Steam ID');
+    if (!authenticatedUser || !steamId || steamId.trim() === "") {
+      alert('Primero debes autenticarte con Steam');
       return;
     }
 

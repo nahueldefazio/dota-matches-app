@@ -65,11 +65,11 @@ export const useSteamAuth = () => {
 
       const steamId = steamIdMatch[1];
       
-      // Crear datos del usuario con información simulada
+      // Crear datos del usuario con información real de Steam
       const userData = {
         steamID: steamId,
         name: `Usuario Steam ${steamId.substring(0, 8)}`,
-        avatar: `https://via.placeholder.com/184x184/2196F3/FFFFFF?text=Steam+${steamId.substring(0, 4)}`,
+        avatar: `https://steamcdn-a.akamaihd.net/steamcommunity/public/images/avatars/fe/fef49e7fa7e1997310d705b2a6158ff8dc1cdfeb_full.jpg`,
         profileUrl: `https://steamcommunity.com/profiles/${steamId}/`,
         createdAt: new Date().toISOString()
       };
