@@ -26,6 +26,8 @@ export default function DotaMatchesFixed() {
   const [autoCheckFriends, setAutoCheckFriends] = useState(false);
   const [friendsLoadingProgress, setFriendsLoadingProgress] = useState({ current: 0, total: 0 });
   const [showUserPopup, setShowUserPopup] = useState(false);
+  const [showErrorPopup, setShowErrorPopup] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
   const [matchStats, setMatchStats] = useState({ solo: { wins: 0, losses: 0 }, party: { wins: 0, losses: 0 } });
   const [statsReady, setStatsReady] = useState(false);
   const [friendsNote, setFriendsNote] = useState('');
@@ -149,7 +151,13 @@ export default function DotaMatchesFixed() {
       
       // Cargar automáticamente los amigos después de la autenticación
       console.log('👥 Cargando amigos automáticamente después de la autenticación...');
-      await fetchSteamFriends(steamId); // Usar Steam ID del usuario autenticado
+      try {
+        await fetchSteamFriends(steamId); // Usar Steam ID del usuario autenticado
+      } catch (error) {
+        console.error('❌ Error cargando amigos:', error);
+        setErrorMessage('Error cargando lista de amigos de Steam. Verifica tu conexión a internet y que tu perfil sea público.');
+        setShowErrorPopup(true);
+      }
       
       // Limpiar la URL
       window.history.replaceState({}, document.title, window.location.pathname);
@@ -3294,6 +3302,96 @@ export default function DotaMatchesFixed() {
                 >
                   <span>🚪</span>
                   <span>Cerrar sesión</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Popup de error grande */}
+      {showErrorPopup && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-gradient-to-br from-red-900 via-red-800 to-red-900 rounded-3xl shadow-2xl border border-red-500/30 max-w-lg w-full">
+            {/* Header del popup de error */}
+            <div className="bg-gradient-to-r from-red-600 to-red-700 p-6 rounded-t-3xl">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-4">
+                  <div className="w-16 h-16 bg-red-500 rounded-full flex items-center justify-center">
+                    <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                    </svg>
+                  </div>
+                  <div>
+                    <h2 className="text-white font-bold text-xl">Error de Conexión</h2>
+                    <p className="text-red-100 text-sm">No se pudieron cargar los datos</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setShowErrorPopup(false)}
+                  className="text-white hover:text-red-200 transition-colors duration-200 p-2"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+
+            {/* Contenido del popup de error */}
+            <div className="p-6 space-y-6">
+              <div className="text-center">
+                <div className="text-red-200 text-lg mb-4">
+                  {errorMessage}
+                </div>
+                
+                <div className="bg-red-800/50 rounded-lg p-4 border border-red-600/50 mb-6">
+                  <h3 className="text-red-100 font-semibold mb-2">Posibles soluciones:</h3>
+                  <ul className="text-red-200 text-sm space-y-1 text-left">
+                    <li>• Verifica tu conexión a internet</li>
+                    <li>• Asegúrate de que tu perfil de Steam sea público</li>
+                    <li>• Intenta recargar la página</li>
+                    <li>• Espera unos minutos y vuelve a intentar</li>
+                  </ul>
+                </div>
+              </div>
+
+              {/* Botones de acción */}
+              <div className="flex flex-col gap-3">
+                <button
+                  onClick={() => {
+                    setShowErrorPopup(false);
+                    window.location.reload();
+                  }}
+                  className="w-full bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white py-4 px-6 rounded-xl font-semibold transition-all duration-200 flex items-center justify-center gap-3 text-lg"
+                >
+                  <span>🔄</span>
+                  <span>Recargar Página</span>
+                </button>
+                
+                <button
+                  onClick={() => {
+                    setShowErrorPopup(false);
+                    // Intentar cargar amigos nuevamente
+                    if (authenticatedUser?.steamID) {
+                      fetchSteamFriends(authenticatedUser.steamID).catch(() => {
+                        setErrorMessage('Error persistente cargando amigos. Intenta recargar la página.');
+                        setShowErrorPopup(true);
+                      });
+                    }
+                  }}
+                  className="w-full bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white py-3 px-6 rounded-xl font-medium transition-all duration-200 flex items-center justify-center gap-2"
+                >
+                  <span>🔄</span>
+                  <span>Intentar Nuevamente</span>
+                </button>
+                
+                <button
+                  onClick={() => setShowErrorPopup(false)}
+                  className="w-full bg-gradient-to-r from-gray-600 to-gray-700 hover:from-gray-700 hover:to-gray-800 text-white py-3 px-6 rounded-xl font-medium transition-all duration-200 flex items-center justify-center gap-2"
+                >
+                  <span>❌</span>
+                  <span>Continuar Sin Amigos</span>
                 </button>
               </div>
             </div>

@@ -224,6 +224,7 @@ export const useSteamAuth = () => {
         }
       } catch (error) {
         console.warn('⚠️ No se pudieron obtener amigos reales, usando datos simulados...', error);
+        // No mostrar error aquí, solo usar datos simulados
       }
       
       // Fallback con datos simulados
@@ -256,6 +257,8 @@ export const useSteamAuth = () => {
     } catch (error) {
       console.error('❌ Error obteniendo amigos de Steam:', error);
       setFriends([]);
+      // Lanzar error para que el componente lo maneje
+      throw new Error(`Error cargando amigos: ${error.message}`);
     } finally {
       setLoadingFriends(false);
     }
