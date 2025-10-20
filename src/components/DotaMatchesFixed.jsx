@@ -4070,6 +4070,7 @@ export default function DotaMatchesFixed() {
         </div>
       )}
     </div>
+    </div>
   );
 }
 
