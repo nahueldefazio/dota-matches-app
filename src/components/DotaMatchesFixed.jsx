@@ -25,6 +25,7 @@ export default function DotaMatchesFixed() {
   const [loadingProgress, setLoadingProgress] = useState({ current: 0, total: 0 });
   const [autoCheckFriends, setAutoCheckFriends] = useState(false);
   const [friendsLoadingProgress, setFriendsLoadingProgress] = useState({ current: 0, total: 0 });
+  const [showUserPopup, setShowUserPopup] = useState(false);
   const [matchStats, setMatchStats] = useState({ solo: { wins: 0, losses: 0 }, party: { wins: 0, losses: 0 } });
   const [statsReady, setStatsReady] = useState(false);
   const [friendsNote, setFriendsNote] = useState('');
@@ -1366,27 +1367,27 @@ export default function DotaMatchesFixed() {
             <div className="flex items-center space-x-6">
               {authenticatedUser && (
                 <div className="flex items-center space-x-4">
-                  {/* Avatar con efecto hover mejorado */}
-                  <div className="relative group" onClick={() => window.open(`https://steamcommunity.com/profiles/${authenticatedUser.steamID}`, '_blank')}>
-                    <img 
-                      src={authenticatedUser.avatar} 
-                      alt={`Avatar de ${authenticatedUser.name}`}
-                      className="w-12 h-12 rounded-full border-2 border-orange-400 shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-110 cursor-pointer"
-                      onError={(e) => {
-                        e.target.src = `data:image/svg+xml;base64,${btoa(`<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 48 48"><rect width="48" height="48" fill="#2196F3" rx="24"/><text x="24" y="30" text-anchor="middle" fill="white" font-family="Arial" font-size="12" font-weight="bold">Steam</text></svg>`)}`;
-                      }}
-                    />
-                    <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-green-500 rounded-full border-2 border-slate-900 animate-pulse"></div>
-                    
-                    {/* Tooltip mejorado */}
-                    <div className="absolute top-full left-1/2 transform -translate-x-1/2 mt-3 px-3 py-2 bg-gradient-to-r from-slate-800 to-slate-900 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-all duration-300 whitespace-nowrap z-50 pointer-events-none shadow-xl border border-orange-400/30 max-w-[200px]">
-                      <div className="flex items-center gap-1">
-                        <span>👤</span>
-                        <span>Ver perfil completo</span>
-                      </div>
-                      <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-3 border-r-3 border-b-3 border-l-transparent border-r-transparent border-b-slate-900"></div>
-                    </div>
-                  </div>
+                     {/* Avatar con efecto hover mejorado */}
+                     <div className="relative group" onClick={() => setShowUserPopup(true)}>
+                       <img 
+                         src={authenticatedUser.avatar} 
+                         alt={`Avatar de ${authenticatedUser.name}`}
+                         className="w-12 h-12 rounded-full border-2 border-orange-400 shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-110 cursor-pointer"
+                         onError={(e) => {
+                           e.target.src = `data:image/svg+xml;base64,${btoa(`<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 48 48"><rect width="48" height="48" fill="#2196F3" rx="24"/><text x="24" y="30" text-anchor="middle" fill="white" font-family="Arial" font-size="12" font-weight="bold">Steam</text></svg>`)}`;
+                         }}
+                       />
+                       <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-green-500 rounded-full border-2 border-slate-900 animate-pulse"></div>
+                       
+                       {/* Tooltip mejorado */}
+                       <div className="absolute top-full left-1/2 transform -translate-x-1/2 mt-3 px-3 py-2 bg-gradient-to-r from-slate-800 to-slate-900 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-all duration-300 whitespace-nowrap z-50 pointer-events-none shadow-xl border border-orange-400/30 max-w-[200px]">
+                         <div className="flex items-center gap-1">
+                           <span>👤</span>
+                           <span>Ver información</span>
+                         </div>
+                         <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-3 border-r-3 border-b-3 border-l-transparent border-r-transparent border-b-slate-900"></div>
+                       </div>
+                     </div>
                   
                   {/* Información del usuario */}
                   <div className="flex flex-col min-w-0">
@@ -2953,6 +2954,158 @@ export default function DotaMatchesFixed() {
                   className="px-6 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg transition-colors"
                 >
                   Cerrar
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Popup de información del usuario */}
+      {showUserPopup && authenticatedUser && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-gradient-to-br from-slate-800 via-slate-900 to-slate-800 rounded-2xl shadow-2xl border border-orange-400/30 max-w-md w-full max-h-[90vh] overflow-y-auto">
+            {/* Header del popup */}
+            <div className="bg-gradient-to-r from-orange-500 to-red-500 p-6 rounded-t-2xl">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-4">
+                  <img 
+                    src={authenticatedUser.avatar} 
+                    alt={`Avatar de ${authenticatedUser.name}`}
+                    className="w-16 h-16 rounded-full border-3 border-white shadow-xl"
+                    onError={(e) => {
+                      e.target.src = `data:image/svg+xml;base64,${btoa(`<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64"><rect width="64" height="64" fill="#2196F3" rx="32"/><text x="32" y="40" text-anchor="middle" fill="white" font-family="Arial" font-size="16" font-weight="bold">Steam</text></svg>`)}`;
+                    }}
+                  />
+                  <div>
+                    <h2 className="text-white font-bold text-xl">{authenticatedUser.name}</h2>
+                    <p className="text-orange-100 text-sm">Perfil de Steam</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setShowUserPopup(false)}
+                  className="text-white hover:text-orange-200 transition-colors duration-200 p-2"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+
+            {/* Contenido del popup */}
+            <div className="p-6 space-y-6">
+              {/* Información básica */}
+              <div className="space-y-4">
+                <h3 className="text-white font-semibold text-lg flex items-center gap-2">
+                  <span>📊</span>
+                  Información del Perfil
+                </h3>
+                
+                <div className="grid grid-cols-1 gap-4">
+                  <div className="bg-slate-700/50 rounded-lg p-4 border border-slate-600/50">
+                    <div className="flex items-center justify-between">
+                      <span className="text-slate-300 text-sm">Steam ID</span>
+                      <span className="text-white font-mono text-sm">{authenticatedUser.steamID}</span>
+                    </div>
+                  </div>
+                  
+                  <div className="bg-slate-700/50 rounded-lg p-4 border border-slate-600/50">
+                    <div className="flex items-center justify-between">
+                      <span className="text-slate-300 text-sm">Estado</span>
+                      <div className="flex items-center gap-2">
+                        <div className={`w-3 h-3 rounded-full ${
+                          authenticatedUser.personState === 1 ? 'bg-green-500' : 
+                          authenticatedUser.personState === 2 ? 'bg-yellow-500' :
+                          authenticatedUser.personState === 3 ? 'bg-orange-500' : 'bg-gray-500'
+                        }`}></div>
+                        <span className="text-white text-sm">
+                          {authenticatedUser.personState === 1 ? '🟢 Online' : 
+                           authenticatedUser.personState === 2 ? '🟡 Busy' :
+                           authenticatedUser.personState === 3 ? '🟠 Away' : '🔴 Offline'}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="bg-slate-700/50 rounded-lg p-4 border border-slate-600/50">
+                    <div className="flex items-center justify-between">
+                      <span className="text-slate-300 text-sm">Visibilidad</span>
+                      <span className="text-white text-sm">
+                        {authenticatedUser.communityVisibility === 3 ? '🔒 Privado' : 
+                         authenticatedUser.communityVisibility === 2 ? '🔓 Amigos' : '🌐 Público'}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="bg-slate-700/50 rounded-lg p-4 border border-slate-600/50">
+                    <div className="flex items-center justify-between">
+                      <span className="text-slate-300 text-sm">Amigos cargados</span>
+                      <span className="text-white text-sm">{friends.length} amigos</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Estadísticas de partidas */}
+              {statsReady && (
+                <div className="space-y-4">
+                  <h3 className="text-white font-semibold text-lg flex items-center gap-2">
+                    <span>🎮</span>
+                    Estadísticas de Partidas
+                  </h3>
+                  
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="bg-gradient-to-br from-green-600/20 to-green-700/20 rounded-lg p-4 border border-green-500/30">
+                      <div className="text-center">
+                        <div className="text-green-400 text-2xl font-bold">{matchStats.solo.wins}</div>
+                        <div className="text-green-300 text-sm">Solo Wins</div>
+                      </div>
+                    </div>
+                    
+                    <div className="bg-gradient-to-br from-red-600/20 to-red-700/20 rounded-lg p-4 border border-red-500/30">
+                      <div className="text-center">
+                        <div className="text-red-400 text-2xl font-bold">{matchStats.solo.losses}</div>
+                        <div className="text-red-300 text-sm">Solo Losses</div>
+                      </div>
+                    </div>
+                    
+                    <div className="bg-gradient-to-br from-blue-600/20 to-blue-700/20 rounded-lg p-4 border border-blue-500/30">
+                      <div className="text-center">
+                        <div className="text-blue-400 text-2xl font-bold">{matchStats.party.wins}</div>
+                        <div className="text-blue-300 text-sm">Party Wins</div>
+                      </div>
+                    </div>
+                    
+                    <div className="bg-gradient-to-br from-purple-600/20 to-purple-700/20 rounded-lg p-4 border border-purple-500/30">
+                      <div className="text-center">
+                        <div className="text-purple-400 text-2xl font-bold">{matchStats.party.losses}</div>
+                        <div className="text-purple-300 text-sm">Party Losses</div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Botones de acción */}
+              <div className="flex flex-col gap-3">
+                <button
+                  onClick={() => window.open(`https://steamcommunity.com/profiles/${authenticatedUser.steamID}`, '_blank')}
+                  className="w-full bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white py-3 px-4 rounded-lg font-medium transition-all duration-200 flex items-center justify-center gap-2"
+                >
+                  <span>🌐</span>
+                  <span>Abrir perfil en Steam</span>
+                </button>
+                
+                <button
+                  onClick={() => {
+                    setShowUserPopup(false);
+                    logoutUser();
+                  }}
+                  className="w-full bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white py-3 px-4 rounded-lg font-medium transition-all duration-200 flex items-center justify-center gap-2"
+                >
+                  <span>🚪</span>
+                  <span>Cerrar sesión</span>
                 </button>
               </div>
             </div>
