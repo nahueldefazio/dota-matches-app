@@ -1346,9 +1346,59 @@ export default function DotaMatchesFixed() {
               </div>
             </div>
             <div className="flex items-center space-x-6">
-              <div className="text-white text-sm">
-                <span>🎮 Dota 2 Matches Analyzer</span>
-              </div>
+              {authenticatedUser && (
+                <div className="flex items-center space-x-4">
+                  {/* Avatar con efecto hover mejorado */}
+                  <div className="relative group">
+                    <img 
+                      src={authenticatedUser.avatar} 
+                      alt={`Avatar de ${authenticatedUser.name}`}
+                      className="w-12 h-12 rounded-full border-2 border-orange-400 shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-110 cursor-pointer"
+                      onError={(e) => {
+                        e.target.src = `data:image/svg+xml;base64,${btoa(`<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 48 48"><rect width="48" height="48" fill="#2196F3" rx="24"/><text x="24" y="30" text-anchor="middle" fill="white" font-family="Arial" font-size="12" font-weight="bold">Steam</text></svg>`)}`;
+                      }}
+                    />
+                    <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-green-500 rounded-full border-2 border-slate-900 animate-pulse"></div>
+                    
+                    {/* Tooltip mejorado */}
+                    <div className="absolute top-full left-1/2 transform -translate-x-1/2 mt-3 px-3 py-2 bg-gradient-to-r from-slate-800 to-slate-900 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-all duration-300 whitespace-nowrap z-50 pointer-events-none shadow-xl border border-orange-400/30 max-w-[200px]">
+                      <div className="flex items-center gap-1">
+                        <span>👤</span>
+                        <span>Ver perfil completo</span>
+                      </div>
+                      <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-3 border-r-3 border-b-3 border-l-transparent border-r-transparent border-b-slate-900"></div>
+                    </div>
+                  </div>
+                  
+                  {/* Información del usuario */}
+                  <div className="flex flex-col">
+                    <span className="text-white font-semibold text-sm">{authenticatedUser.name}</span>
+                    <span className="text-orange-300 text-xs">Steam ID: {authenticatedUser.steamID}</span>
+                    <span className="text-blue-300 text-xs">Amigos: {friends.length}</span>
+                  </div>
+                  
+                  {/* Botones de acción */}
+                  <div className="flex space-x-2">
+                    <button
+                      disabled={isBusy}
+                      onClick={() => window.open(`https://steamcommunity.com/profiles/${authenticatedUser.steamID}`, '_blank')}
+                      className="px-4 py-2 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white rounded-lg text-sm font-medium transition-all duration-200 shadow-lg hover:shadow-xl hover:scale-105 flex items-center space-x-2"
+                    >
+                      <span>👤</span>
+                      <span>Perfil Steam</span>
+                    </button>
+                    
+                    <button
+                      disabled={isBusy}
+                      onClick={logoutUser}
+                      className="px-4 py-2 bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white rounded-lg text-sm font-medium transition-all duration-200 shadow-lg hover:shadow-xl hover:scale-105 flex items-center space-x-2"
+                    >
+                      <span>🚪</span>
+                      <span>Cerrar sesión</span>
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -1393,34 +1443,6 @@ export default function DotaMatchesFixed() {
       )}
 
 
-      {/* Información del usuario autenticado */}
-      {authenticatedUser && (
-        <div className="mb-6 bg-gradient-to-r from-green-50 to-blue-50 border border-green-200 rounded-lg p-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-4">
-              <img 
-                src={authenticatedUser.avatar} 
-                alt={`Avatar de ${authenticatedUser.name}`}
-                className="w-12 h-12 rounded-full border-2 border-green-300 shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-110 cursor-pointer"
-                onError={(e) => {
-                  e.target.src = `data:image/svg+xml;base64,${btoa(`<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 48 48"><rect width="48" height="48" fill="#2196F3" rx="24"/><text x="24" y="30" text-anchor="middle" fill="white" font-family="Arial" font-size="12" font-weight="bold">Steam</text></svg>`)}`;
-                }}
-              />
-              <div>
-                <p className="font-medium text-gray-800">¡Hola, {authenticatedUser.name}!</p>
-                <p className="text-sm text-gray-600">Steam ID: {authenticatedUser.steamID}</p>
-                <p className="text-sm text-gray-600">Amigos: {friends.length}</p>
-              </div>
-            </div>
-            <button
-              onClick={logoutUser}
-              className="text-sm text-gray-500 hover:text-gray-700 underline"
-            >
-              Cerrar sesión
-            </button>
-          </div>
-        </div>
-      )}
 
       {/* Notificación sobre amigos predefinidos */}
       {friendsNote && (
