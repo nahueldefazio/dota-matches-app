@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { useSteamAuth } from "../hooks/useSteamAuth";
 
 export default function DotaMatchesFixed() {
   const [matches, setMatches] = useState([]);
@@ -29,12 +30,20 @@ export default function DotaMatchesFixed() {
   const [friendsNote, setFriendsNote] = useState('');
   const [companionsAnalysisComplete, setCompanionsAnalysisComplete] = useState(false);
 
-  // Estados simplificados
-  const [friends, setFriends] = useState([]);
-  const [loadingFriends, setLoadingFriends] = useState(false);
+  // Usar el hook de autenticación de Steam
+  const {
+    user: authenticatedUser,
+    loading: authLoading,
+    error: authError,
+    friends,
+    loadingFriends,
+    isAuthenticated,
+    logout: logoutUser,
+    fetchSteamFriends
+  } = useSteamAuth();
   
   // Flag global de actividad para deshabilitar botones durante cualquier carga
-  const isBusy = loading || rateLimitWaiting || loadingMatchDetails || loadingFriends || checkingFriends;
+  const isBusy = loading || rateLimitWaiting || loadingMatchDetails || authLoading || loadingFriends || checkingFriends;
   const isSteamCallback = () => {
     const urlParams = new URLSearchParams(window.location.search);
     return urlParams.has('openid.claimed_id') && urlParams.has('openid.identity');
@@ -1446,33 +1455,30 @@ export default function DotaMatchesFixed() {
       )}
 
 
-      {/* Información del Steam ID actual */}
-      {steamId && (
+      {/* Información del usuario autenticado */}
+      {authenticatedUser && (
         <div className="mb-6 bg-gradient-to-r from-green-50 to-blue-50 border border-green-200 rounded-lg p-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
-              <div className="text-sm text-gray-600">
-                <span className="font-medium">Steam ID 32-bit:</span> {steamId}
-              </div>
-              <div className="text-sm text-gray-600">
-                <span className="font-medium">Steam ID 64-bit:</span> {steam64Id}
-              </div>
-              <div className="text-sm text-gray-600">
-                <span className="font-medium">Amigos cargados:</span> {friends.length}
-                {loadingFriends && <span className="text-blue-600"> (cargando...)</span>}
+              <img 
+                src={authenticatedUser.avatar} 
+                alt={`Avatar de ${authenticatedUser.name}`}
+                className="w-12 h-12 rounded-full border-2 border-green-300 shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-110 cursor-pointer"
+                onError={(e) => {
+                  e.target.src = `data:image/svg+xml;base64,${btoa(`<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 48 48"><rect width="48" height="48" fill="#2196F3" rx="24"/><text x="24" y="30" text-anchor="middle" fill="white" font-family="Arial" font-size="12" font-weight="bold">Steam</text></svg>`)}`;
+                }}
+              />
+              <div>
+                <p className="font-medium text-gray-800">¡Hola, {authenticatedUser.name}!</p>
+                <p className="text-sm text-gray-600">Steam ID: {authenticatedUser.steamID}</p>
+                <p className="text-sm text-gray-600">Amigos: {friends.length}</p>
               </div>
             </div>
             <button
-              onClick={() => {
-                setSteamId("");
-                setSteam64Id("");
-                setFriends([]);
-                setMatches([]);
-                setMatchesLoaded(false);
-              }}
+              onClick={logoutUser}
               className="text-sm text-gray-500 hover:text-gray-700 underline"
             >
-              Cambiar Steam ID
+              Cerrar sesión
             </button>
           </div>
         </div>
@@ -1776,74 +1782,6 @@ export default function DotaMatchesFixed() {
         </div>
       )}
 
-      {/* Configuración inicial de Steam ID */}
-      {!steamId && (
-        <div className="flex items-center justify-center min-h-[50vh]">
-          <div className="bg-white rounded-lg shadow-lg p-8 max-w-md mx-auto">
-            <div className="text-center mb-6">
-              <div className="w-16 h-16 bg-blue-500 rounded-full flex items-center justify-center mx-auto mb-4">
-                <span className="text-2xl">🎮</span>
-              </div>
-              <h2 className="text-2xl font-bold text-gray-800 mb-2">
-                Configurar Steam ID
-              </h2>
-              <p className="text-gray-600">
-                Ingresa tu Steam ID para comenzar el análisis
-              </p>
-            </div>
-            
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Steam ID (32-bit o 64-bit)
-                </label>
-                <input
-                  type="text"
-                  value={steamId}
-                  onChange={(e) => {
-                    const value = e.target.value;
-                    setSteamId(value);
-                    // Si parece ser un Steam ID 64-bit, convertir automáticamente
-                    if (value.length > 10 && value.startsWith('7656119')) {
-                      const steam32 = convertSteam64ToSteam32(value);
-                      if (steam32 && steam32 !== "0") {
-                        setSteamId(steam32);
-                        setSteam64Id(value);
-                      }
-                    }
-                  }}
-                  placeholder="Ej: 72810287 o 76561198045611095"
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-              
-              <button
-                onClick={() => {
-                  if (steamId.trim() !== "") {
-                    // Si es un Steam ID 32-bit, calcular el 64-bit
-                    if (steamId.length < 15) {
-                      const steam64 = convertSteam32ToSteam64(steamId);
-                      setSteam64Id(steam64);
-                    }
-                  }
-                }}
-                disabled={!steamId.trim() || isBusy}
-                className={`w-full py-3 px-6 rounded-lg font-medium transition-colors ${
-                  !steamId.trim() || isBusy
-                    ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                    : 'bg-blue-600 hover:bg-blue-700 text-white'
-                }`}
-              >
-                {isBusy ? 'Configurando...' : 'Configurar Steam ID'}
-              </button>
-            </div>
-            
-            <div className="mt-6 text-sm text-gray-500 text-center">
-              <p>💡 Puedes encontrar tu Steam ID en tu perfil de Steam</p>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Sección original compleja - comentada */}
       {false && (
