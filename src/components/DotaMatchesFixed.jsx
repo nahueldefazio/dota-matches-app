@@ -147,7 +147,6 @@ export default function DotaMatchesFixed() {
     } catch (err) {
       console.error('Error procesando callback de Steam:', err);
     }
-    }
   };
 
   // Función para cerrar sesión
