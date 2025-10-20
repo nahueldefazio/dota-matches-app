@@ -1519,19 +1519,6 @@ export default function DotaMatchesFixed() {
                 🔄 Cambiar período
               </button>
               
-              {Object.keys(cache).length > 0 && (
-                <button
-                  disabled={isBusy}
-                  onClick={() => {
-                    setCache({});
-                    console.log('🗑️ Cache limpiado');
-                  }}
-                  className="px-3 py-2 bg-gray-500 hover:bg-gray-600 text-white rounded-lg text-sm transition-colors"
-                  title="Limpiar cache (útil si hay problemas de rate limiting)"
-                >
-                  🗑️ Limpiar cache
-                </button>
-              )}
             </div>
           </div>
         </div>
