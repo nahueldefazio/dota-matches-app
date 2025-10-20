@@ -36,6 +36,9 @@ export default function DotaMatchesFixed() {
   const [authError, setAuthError] = useState("");
   const [friends, setFriends] = useState([]);
   const [loadingFriends, setLoadingFriends] = useState(false);
+  
+  // Flag global de actividad para deshabilitar botones durante cualquier carga
+  const isBusy = loading || rateLimitWaiting || loadingMatchDetails || authLoading || loadingFriends || checkingFriends;
 
   // Funciones de autenticación local
   const isAuthenticated = !!authenticatedUser;
@@ -482,6 +485,9 @@ export default function DotaMatchesFixed() {
       }
     }
     
+    if (heroImageName === 'timbersaw' || heroImageName === 'shredder') {
+      return 'https://cdn.steamstatic.com/apps/dota2/videos/dota_react/heroes/renders/shredder.png';
+    }
     const imageUrl = `https://cdn.dota2.com/apps/dota2/images/heroes/${heroImageName}_full.png`;
     
     return imageUrl;
@@ -1452,6 +1458,7 @@ export default function DotaMatchesFixed() {
                   {/* Botones de acción */}
                   <div className="flex space-x-2">
                     <button
+                      disabled={isBusy}
                       onClick={() => window.open(`https://steamcommunity.com/profiles/${steam64Id}`, '_blank')}
                       className="px-4 py-2 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white rounded-lg text-sm font-medium transition-all duration-200 shadow-lg hover:shadow-xl hover:scale-105 flex items-center space-x-2"
                     >
@@ -1460,6 +1467,7 @@ export default function DotaMatchesFixed() {
                     </button>
                     
                     <button
+                      disabled={isBusy}
                       onClick={logout}
                       className="px-4 py-2 bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white rounded-lg text-sm font-medium transition-all duration-200 shadow-lg hover:shadow-xl hover:scale-105 flex items-center space-x-2"
                     >
@@ -1564,6 +1572,7 @@ export default function DotaMatchesFixed() {
             </div>
             <div className="flex gap-2">
               <button
+                disabled={isBusy}
                 onClick={() => {
                   setMatches([]);
                   setMatchesLoaded(false);
@@ -1581,6 +1590,7 @@ export default function DotaMatchesFixed() {
               
               {Object.keys(cache).length > 0 && (
                 <button
+                  disabled={isBusy}
                   onClick={() => {
                     setCache({});
                     console.log('🗑️ Cache limpiado');
@@ -1619,6 +1629,7 @@ export default function DotaMatchesFixed() {
             {/* Grid de períodos épico */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-8 justify-center">
               <button
+                disabled={isBusy}
                 onClick={() => handlePeriodSelection("day")}
                 className="group relative overflow-hidden bg-gradient-to-br from-green-600 to-emerald-700 hover:from-green-700 hover:to-emerald-800 text-white rounded-xl p-6 transition-all duration-300 transform hover:scale-105 hover:shadow-2xl"
               >
@@ -1632,6 +1643,7 @@ export default function DotaMatchesFixed() {
               </button>
               
               <button
+                disabled={isBusy}
                 onClick={() => handlePeriodSelection("week")}
                 className="group relative overflow-hidden bg-gradient-to-br from-blue-600 to-cyan-700 hover:from-blue-700 hover:to-cyan-800 text-white rounded-xl p-6 transition-all duration-300 transform hover:scale-105 hover:shadow-2xl"
               >
@@ -1645,6 +1657,7 @@ export default function DotaMatchesFixed() {
               </button>
               
               <button
+                disabled={isBusy}
                 onClick={() => handlePeriodSelection("month")}
                 className="group relative overflow-hidden bg-gradient-to-br from-orange-600 to-red-700 hover:from-orange-700 hover:to-red-800 text-white rounded-xl p-6 transition-all duration-300 transform hover:scale-105 hover:shadow-2xl"
               >
@@ -1666,6 +1679,7 @@ export default function DotaMatchesFixed() {
                   <span className="bg-gradient-to-r from-orange-400 to-red-400 bg-clip-text text-transparent">Fechas Personalizadas</span>
                 </h4>
                 <button
+                  disabled={isBusy}
                   onClick={() => setShowCalendar(!showCalendar)}
                   className="px-4 py-2 bg-gradient-to-r from-indigo-600 to-purple-700 hover:from-indigo-700 hover:to-purple-800 text-white rounded-lg text-sm transition-all duration-300 transform hover:scale-105 font-semibold flex items-center gap-2"
                 >
@@ -1787,6 +1801,7 @@ export default function DotaMatchesFixed() {
                   {/* Botones de acción */}
                   <div className="flex flex-col sm:flex-row gap-3 justify-end">
                     <button
+                      disabled={isBusy}
                       onClick={() => {
                         setCustomStartDate('');
                         setCustomEndDate('');
@@ -1797,8 +1812,8 @@ export default function DotaMatchesFixed() {
                       <span>Limpiar</span>
                     </button>
                     <button
+                      disabled={isBusy || !customStartDate || !customEndDate}
                       onClick={handleCustomDateSelection}
-                      disabled={!customStartDate || !customEndDate}
                       className="px-6 py-3 bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 disabled:from-gray-600 disabled:to-gray-700 text-white rounded-xl font-bold transition-all duration-300 flex items-center gap-2 transform hover:scale-105 disabled:scale-100 disabled:cursor-not-allowed shadow-lg hover:shadow-xl"
                     >
                       <span className="text-lg">🔍</span>
@@ -1873,8 +1888,8 @@ export default function DotaMatchesFixed() {
               {/* Botón de login */}
               <div className="space-y-4">
                 <button
+                  disabled={isBusy || authLoading}
                   onClick={handleSteamAuth}
-                  disabled={authLoading}
                   className="w-full group relative overflow-hidden bg-gradient-to-r from-blue-600 via-blue-700 to-blue-800 hover:from-blue-700 hover:via-blue-800 hover:to-blue-900 disabled:from-gray-600 disabled:to-gray-700 text-white font-bold py-4 px-6 rounded-xl transition-all duration-300 transform hover:scale-105 hover:shadow-2xl disabled:scale-100 disabled:shadow-none"
                 >
                   {/* Efecto de brillo animado */}
@@ -2001,12 +2016,14 @@ export default function DotaMatchesFixed() {
           </div>
           <div className="flex gap-2 justify-center">
             <button
+              disabled={isBusy}
               onClick={() => loadMatchesWithTimeFilter("all")}
               className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg text-sm"
             >
               🔍 Cargar todas las partidas
             </button>
             <button
+              disabled={isBusy}
               onClick={() => {
                 console.log('🔍 Debug - Steam ID actual:', steamId);
                 console.log('🔍 Debug - Steam ID 64-bit:', steam64Id);
@@ -2017,6 +2034,7 @@ export default function DotaMatchesFixed() {
               🔧 Debug Info
             </button>
             <button
+              disabled={isBusy}
               onClick={() => {
                 const testSteamId = steamId || steam64Id || authenticatedSteam64Id;
                 if (!testSteamId) {
@@ -2120,8 +2138,8 @@ export default function DotaMatchesFixed() {
           <div className="space-y-3">
             <div className="flex gap-2">
               <button
+                disabled={isBusy || checkingFriends || !friends || friends.length === 0}
                 onClick={checkAllMatchesForFriends}
-                disabled={checkingFriends || !friends || friends.length === 0}
                 className="group relative overflow-hidden px-6 py-3 bg-gradient-to-r from-green-600 via-emerald-600 to-green-700 hover:from-green-700 hover:via-emerald-700 hover:to-green-800 disabled:from-gray-500 disabled:to-gray-600 text-white rounded-xl font-semibold flex items-center gap-3 transition-all duration-300 transform hover:scale-105 hover:shadow-xl disabled:scale-100 disabled:cursor-not-allowed"
               >
                 {/* Efecto de brillo animado */}
@@ -2437,6 +2455,7 @@ export default function DotaMatchesFixed() {
               <div className="flex justify-between items-center">
                 <h2 className="text-xl font-bold">Detalles de la partida</h2>
                 <button
+                  disabled={isBusy}
                   onClick={closeMatchPopup}
                   className="text-white hover:text-gray-200 text-2xl font-bold"
                 >
@@ -2877,6 +2896,7 @@ export default function DotaMatchesFixed() {
             <div className="sticky bottom-0 bg-gray-50 p-4 rounded-b-lg border-t">
               <div className="flex justify-end">
                 <button
+                  disabled={isBusy}
                   onClick={closeMatchPopup}
                   className="px-6 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg transition-colors"
                 >
@@ -2910,6 +2930,7 @@ export default function DotaMatchesFixed() {
                   </div>
                 </div>
                 <button
+                  disabled={isBusy}
                   onClick={closeSteamProfile}
                   className="text-white hover:text-gray-200 text-3xl font-bold"
                 >
@@ -2965,6 +2986,7 @@ export default function DotaMatchesFixed() {
                 </h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   <button
+                    disabled={isBusy}
                     onClick={() => window.open(`https://steamcommunity.com/profiles/${steam64Id}`, '_blank')}
                     className="p-3 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white rounded-lg transition-all duration-200 hover:scale-105 flex items-center space-x-2"
                   >
@@ -2973,6 +2995,7 @@ export default function DotaMatchesFixed() {
                   </button>
                   
                   <button
+                    disabled={isBusy}
                     onClick={() => window.open(`https://steamcommunity.com/profiles/${steam64Id}/games/?tab=all`, '_blank')}
                     className="p-3 bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white rounded-lg transition-all duration-200 hover:scale-105 flex items-center space-x-2"
                   >
@@ -2981,6 +3004,7 @@ export default function DotaMatchesFixed() {
                   </button>
                   
                   <button
+                    disabled={isBusy}
                     onClick={() => window.open(`https://steamcommunity.com/profiles/${steam64Id}/friends/`, '_blank')}
                     className="p-3 bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white rounded-lg transition-all duration-200 hover:scale-105 flex items-center space-x-2"
                   >
@@ -2989,6 +3013,7 @@ export default function DotaMatchesFixed() {
                   </button>
                   
                   <button
+                    disabled={isBusy}
                     onClick={() => window.open(`https://www.opendota.com/players/${steamId}`, '_blank')}
                     className="p-3 bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white rounded-lg transition-all duration-200 hover:scale-105 flex items-center space-x-2"
                   >
@@ -3020,6 +3045,7 @@ export default function DotaMatchesFixed() {
                   Perfil sincronizado con Steam
                 </span>
                 <button
+                  disabled={isBusy}
                   onClick={closeSteamProfile}
                   className="px-6 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg transition-colors"
                 >

@@ -19,6 +19,9 @@ export default function SteamAuth({ onLoginSuccess }) {
     isAuthenticated
   } = useSteamAuth();
 
+  // Deshabilitar botones durante cualquier carga
+  const isBusy = loading || loadingFriends;
+
   // Efecto para manejar el callback de Steam automáticamente
   useEffect(() => {
     if (isSteamCallback() && !isAuthenticated && !loading) {
@@ -104,6 +107,7 @@ export default function SteamAuth({ onLoginSuccess }) {
             <h3 className="text-green-800 font-semibold text-lg">¡Autenticado con Steam!</h3>
           </div>
           <button
+            disabled={isBusy}
             onClick={logout}
             className="text-green-600 hover:text-green-800 text-sm underline"
           >
@@ -247,6 +251,7 @@ export default function SteamAuth({ onLoginSuccess }) {
   return (
     <div className="text-center">
       <button
+        disabled={isBusy}
         onClick={loginWithSteam}
         className="group relative bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-bold py-4 px-8 rounded-2xl transition-all duration-300 transform hover:scale-105 hover:shadow-2xl flex items-center justify-center mx-auto min-w-[280px]"
       >

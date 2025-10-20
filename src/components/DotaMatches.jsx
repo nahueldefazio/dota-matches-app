@@ -17,6 +17,9 @@ export default function DotaMatches() {
   const [authenticatedUser, setAuthenticatedUser] = useState(null);
   const [friends, setFriends] = useState([]);
   const [loadingFriends, setLoadingFriends] = useState(false);
+
+  // Flag global para deshabilitar botones mientras haya cargas activas
+  const isBusy = loading || loadingFriends || converting || checkingFriends;
   const [friendsInMatches, setFriendsInMatches] = useState({});
   const [checkingFriends, setCheckingFriends] = useState(false);
   const [timeFilter, setTimeFilter] = useState("month");
@@ -826,6 +829,7 @@ export default function DotaMatches() {
               </div>
             </div>
             <button
+              disabled={isBusy}
               onClick={logout}
               className="text-sm text-gray-500 hover:text-gray-700 underline"
             >
@@ -845,6 +849,7 @@ export default function DotaMatches() {
           
           <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
             <button
+              disabled={isBusy}
               onClick={() => loadMatchesWithTimeFilter("day")}
               className="px-4 py-3 bg-green-500 hover:bg-green-600 text-white rounded-lg transition-colors text-center"
             >
@@ -854,6 +859,7 @@ export default function DotaMatches() {
             </button>
             
             <button
+              disabled={isBusy}
               onClick={() => loadMatchesWithTimeFilter("week")}
               className="px-4 py-3 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors text-center"
             >
@@ -863,6 +869,7 @@ export default function DotaMatches() {
             </button>
             
             <button
+              disabled={isBusy}
               onClick={() => loadMatchesWithTimeFilter("month")}
               className="px-4 py-3 bg-purple-500 hover:bg-purple-600 text-white rounded-lg transition-colors text-center"
             >
@@ -872,6 +879,7 @@ export default function DotaMatches() {
             </button>
             
             <button
+              disabled={isBusy}
               onClick={() => loadMatchesWithTimeFilter("2months")}
               className="px-4 py-3 bg-orange-500 hover:bg-orange-600 text-white rounded-lg transition-colors text-center"
             >
@@ -881,6 +889,7 @@ export default function DotaMatches() {
             </button>
             
             <button
+              disabled={isBusy}
               onClick={() => loadMatchesWithTimeFilter("3months")}
               className="px-4 py-3 bg-red-500 hover:bg-red-600 text-white rounded-lg transition-colors text-center"
             >
@@ -890,6 +899,7 @@ export default function DotaMatches() {
             </button>
             
             <button
+              disabled={isBusy}
               onClick={() => loadMatchesWithTimeFilter("all")}
               className="px-4 py-3 bg-gray-500 hover:bg-gray-600 text-white rounded-lg transition-colors text-center"
             >
@@ -952,7 +962,7 @@ export default function DotaMatches() {
           <div className="flex justify-center gap-4 flex-wrap">
             <button
               type="submit"
-              disabled={loading}
+              disabled={isBusy || loading}
               className={`px-8 py-2 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors flex items-center gap-2 ${
                 loading 
                   ? 'bg-gray-400 cursor-not-allowed' 
@@ -973,9 +983,9 @@ export default function DotaMatches() {
             
             {steam64Id && (
               <button
+                disabled={isBusy || loadingFriends}
                 type="button"
                 onClick={fetchSteamFriends}
-                disabled={loadingFriends}
                 className={`px-6 py-2 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 transition-colors flex items-center gap-2 ${
                   loadingFriends 
                     ? 'bg-gray-400 cursor-not-allowed' 
@@ -997,6 +1007,7 @@ export default function DotaMatches() {
             
             {!authenticatedUser && (
               <button
+                disabled={isBusy}
                 type="button"
                 onClick={loginWithSteam}
                 className="px-6 py-2 bg-green-600 hover:bg-green-700 text-white rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition-colors flex items-center gap-2"
@@ -1085,6 +1096,7 @@ export default function DotaMatches() {
         <div className="mb-4">
           <div className="flex gap-2 mb-2">
             <button
+              disabled={isBusy}
               onClick={() => setFilter("all")}
               className={`px-4 py-2 rounded ${
                 filter === "all" ? "bg-blue-500 text-white" : "bg-gray-200"
@@ -1093,6 +1105,7 @@ export default function DotaMatches() {
               All
             </button>
             <button
+              disabled={isBusy}
               onClick={() => setFilter("solo")}
               className={`px-4 py-2 rounded ${
                 filter === "solo" ? "bg-blue-500 text-white" : "bg-gray-200"
@@ -1101,6 +1114,7 @@ export default function DotaMatches() {
               Solo Queue
             </button>
             <button
+              disabled={isBusy}
               onClick={() => setFilter("party")}
               className={`px-4 py-2 rounded ${
                 filter === "party" ? "bg-blue-500 text-white" : "bg-gray-200"
@@ -1116,6 +1130,7 @@ export default function DotaMatches() {
               <h4 className="text-sm font-medium text-gray-700 mb-2">📅 Filtrar partidas por tiempo:</h4>
               <div className="flex gap-2 flex-wrap">
                 <button
+                  disabled={isBusy}
                   onClick={() => setTimeFilter("day")}
                   className={`px-3 py-1 rounded text-sm ${
                     timeFilter === "day" ? "bg-green-500 text-white" : "bg-gray-200 hover:bg-gray-300"
@@ -1124,6 +1139,7 @@ export default function DotaMatches() {
                   Último día
                 </button>
                 <button
+                  disabled={isBusy}
                   onClick={() => setTimeFilter("week")}
                   className={`px-3 py-1 rounded text-sm ${
                     timeFilter === "week" ? "bg-green-500 text-white" : "bg-gray-200 hover:bg-gray-300"
@@ -1132,6 +1148,7 @@ export default function DotaMatches() {
                   Última semana
                 </button>
                 <button
+                  disabled={isBusy}
                   onClick={() => setTimeFilter("month")}
                   className={`px-3 py-1 rounded text-sm ${
                     timeFilter === "month" ? "bg-green-500 text-white" : "bg-gray-200 hover:bg-gray-300"
@@ -1140,6 +1157,7 @@ export default function DotaMatches() {
                   Último mes
                 </button>
                 <button
+                  disabled={isBusy}
                   onClick={() => setTimeFilter("all")}
                   className={`px-3 py-1 rounded text-sm ${
                     timeFilter === "all" ? "bg-green-500 text-white" : "bg-gray-200 hover:bg-gray-300"
@@ -1162,8 +1180,8 @@ export default function DotaMatches() {
           {matches.length > 0 && (
             <div className="mt-2 mb-2">
               <button
+                disabled={isBusy || checkingFriends}
                 onClick={checkAllSoloMatchesForFriends}
-                disabled={checkingFriends}
                 className={`px-4 py-2 rounded text-sm ${
                   checkingFriends 
                     ? "bg-gray-400 text-gray-600 cursor-not-allowed" 
@@ -1206,6 +1224,7 @@ export default function DotaMatches() {
               <div className="mt-2 space-y-2">
                 <div>
                   <button
+                    disabled={isBusy}
                     onClick={() => diagnoseSpecificMatch('8490796592')}
                     className="px-3 py-1 rounded text-xs bg-yellow-500 hover:bg-yellow-600 text-white"
                   >
@@ -1216,6 +1235,7 @@ export default function DotaMatches() {
                 
                 <div>
                   <button
+                    disabled={isBusy}
                     onClick={() => {
                       const targetFriendId = '76561198097432092';
                       const isInList = friends.some(f => f.steamid === targetFriendId);
@@ -1236,6 +1256,7 @@ export default function DotaMatches() {
                 
                 <div>
                   <button
+                    disabled={isBusy}
                     onClick={() => {
                       console.log('🔍 === COMPARANDO AMBAS PARTIDAS ===');
                       Promise.all([
@@ -1253,6 +1274,7 @@ export default function DotaMatches() {
                 
                 <div>
                   <button
+                    disabled={isBusy}
                     onClick={() => {
                       console.log('🔧 === PROBANDO DIFERENTES CONVERSIONES DE STEAM ID ===');
                       const targetFriendId = '76561198097432092';
