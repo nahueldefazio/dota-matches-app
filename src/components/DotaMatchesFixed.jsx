@@ -29,6 +29,7 @@ export default function DotaMatchesFixed() {
   const [showErrorPopup, setShowErrorPopup] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [playerPerformanceAnalysis, setPlayerPerformanceAnalysis] = useState({});
+  const [throwAnalysis, setThrowAnalysis] = useState({});
   const [matchStats, setMatchStats] = useState({ solo: { wins: 0, losses: 0 }, party: { wins: 0, losses: 0 } });
   const [statsReady, setStatsReady] = useState(false);
   const [friendsNote, setFriendsNote] = useState('');
@@ -533,6 +534,120 @@ export default function DotaMatchesFixed() {
     return stats;
   };
 
+  // Función para analizar si un jugador "throweó" la partida
+  const analyzeThrowPotential = (player, matchDuration) => {
+    if (!player) return null;
+    
+    // Calcular métricas tempranas vs tardías
+    const earlyGame = {
+      kills: Math.floor(player.kills * 0.4), // 40% de kills en early game
+      deaths: Math.floor(player.deaths * 0.3), // 30% de deaths en early game
+      assists: Math.floor(player.assists * 0.4), // 40% de assists en early game
+      lastHits: Math.floor(player.last_hits * 0.5), // 50% de last hits en early game
+      heroDamage: Math.floor(player.hero_damage * 0.3), // 30% de damage en early game
+    };
+    
+    const lateGame = {
+      kills: Math.floor(player.kills * 0.6), // 60% de kills en late game
+      deaths: Math.floor(player.deaths * 0.7), // 70% de deaths en late game
+      assists: Math.floor(player.assists * 0.6), // 60% de assists en late game
+      lastHits: Math.floor(player.last_hits * 0.5), // 50% de last hits en late game
+      heroDamage: Math.floor(player.hero_damage * 0.7), // 70% de damage en late game
+    };
+    
+    // Calcular KDA temprano vs tardío
+    const earlyKDA = (earlyGame.kills + earlyGame.assists) / Math.max(earlyGame.deaths, 1);
+    const lateKDA = (lateGame.kills + lateGame.assists) / Math.max(lateGame.deaths, 1);
+    
+    // Calcular score de rendimiento temprano
+    let earlyScore = 0;
+    if (earlyKDA >= 3) earlyScore += 40;
+    else if (earlyKDA >= 2) earlyScore += 35;
+    else if (earlyKDA >= 1.5) earlyScore += 30;
+    else if (earlyKDA >= 1) earlyScore += 25;
+    else if (earlyKDA >= 0.5) earlyScore += 15;
+    else earlyScore += 5;
+    
+    // Calcular score de rendimiento tardío
+    let lateScore = 0;
+    if (lateKDA >= 3) lateScore += 40;
+    else if (lateKDA >= 2) lateScore += 35;
+    else if (lateKDA >= 1.5) lateScore += 30;
+    else if (lateKDA >= 1) lateScore += 25;
+    else if (lateKDA >= 0.5) lateScore += 15;
+    else lateScore += 5;
+    
+    // Agregar factores adicionales
+    const earlyLHPerMin = earlyGame.lastHits / Math.max(matchDuration / 60 * 0.4, 1);
+    const lateLHPerMin = lateGame.lastHits / Math.max(matchDuration / 60 * 0.6, 1);
+    
+    if (earlyLHPerMin >= 4) earlyScore += 20;
+    else if (earlyLHPerMin >= 3) earlyScore += 15;
+    else if (earlyLHPerMin >= 2) earlyScore += 10;
+    else earlyScore += 5;
+    
+    if (lateLHPerMin >= 4) lateScore += 20;
+    else if (lateLHPerMin >= 3) lateScore += 15;
+    else if (lateLHPerMin >= 2) lateScore += 10;
+    else lateScore += 5;
+    
+    // Calcular diferencia de rendimiento
+    const performanceDiff = earlyScore - lateScore;
+    const throwPercentage = Math.max(0, (performanceDiff / earlyScore) * 100);
+    
+    // Determinar si throweó
+    let throwCategory = '';
+    let throwColor = '';
+    let throwIcon = '';
+    let throwDescription = '';
+    
+    if (throwPercentage >= 50) {
+      throwCategory = 'THROW MASIVO';
+      throwColor = 'text-red-600';
+      throwIcon = '💀';
+      throwDescription = 'Empezó muy bien y colapsó completamente';
+    } else if (throwPercentage >= 30) {
+      throwCategory = 'THROW GRAVE';
+      throwColor = 'text-red-500';
+      throwIcon = '😡';
+      throwDescription = 'Buen inicio pero decayó mucho';
+    } else if (throwPercentage >= 20) {
+      throwCategory = 'THROW MODERADO';
+      throwColor = 'text-orange-500';
+      throwIcon = '😞';
+      throwDescription = 'Rendimiento decayó notablemente';
+    } else if (throwPercentage >= 10) {
+      throwCategory = 'DECAÍDA LEVE';
+      throwColor = 'text-yellow-500';
+      throwIcon = '😐';
+      throwDescription = 'Ligera caída en el rendimiento';
+    } else if (throwPercentage >= -10) {
+      throwCategory = 'CONSISTENTE';
+      throwColor = 'text-green-500';
+      throwIcon = '👍';
+      throwDescription = 'Mantuvo un rendimiento estable';
+    } else {
+      throwCategory = 'CLUTCH';
+      throwColor = 'text-blue-500';
+      throwIcon = '🔥';
+      throwDescription = 'Mejoró hacia el final';
+    }
+    
+    return {
+      earlyScore: Math.round(earlyScore),
+      lateScore: Math.round(lateScore),
+      performanceDiff: Math.round(performanceDiff),
+      throwPercentage: Math.round(throwPercentage),
+      category: throwCategory,
+      color: throwColor,
+      icon: throwIcon,
+      description: throwDescription,
+      earlyKDA: earlyKDA.toFixed(2),
+      lateKDA: lateKDA.toFixed(2),
+      isThrow: throwPercentage >= 20
+    };
+  };
+
   // Función para analizar el rendimiento de un jugador en una partida
   const analyzePlayerPerformance = (player) => {
     if (!player) return null;
@@ -679,8 +794,12 @@ export default function DotaMatchesFixed() {
       
       // Analizar rendimiento de todos los jugadores
       const performanceAnalysis = {};
+      const throwAnalysis = {};
+      
       matchDetails.players.forEach(player => {
         const analysis = analyzePlayerPerformance(player);
+        const throwData = analyzeThrowPotential(player, matchDetails.duration);
+        
         if (analysis) {
           performanceAnalysis[player.account_id] = {
             ...analysis,
@@ -690,12 +809,27 @@ export default function DotaMatchesFixed() {
             team: player.is_radiant ? 'Radiant' : 'Dire'
           };
         }
+        
+        if (throwData) {
+          throwAnalysis[player.account_id] = {
+            ...throwData,
+            playerName: player.personaname || 'Jugador Anónimo',
+            heroId: player.hero_id,
+            isRadiant: player.is_radiant,
+            team: player.is_radiant ? 'Radiant' : 'Dire'
+          };
+        }
       });
       
-      // Guardar análisis de rendimiento
+      // Guardar análisis de rendimiento y throw
       setPlayerPerformanceAnalysis(prev => ({
         ...prev,
         [match.match_id]: performanceAnalysis
+      }));
+      
+      setThrowAnalysis(prev => ({
+        ...prev,
+        [match.match_id]: throwAnalysis
       }));
     
     const friendsFound = [];
@@ -2474,6 +2608,90 @@ export default function DotaMatchesFixed() {
                             </div>
                           ))}
                       </div>
+                      
+                      {/* Análisis de Throw */}
+                      {throwAnalysis[match.match_id] && (
+                        <div className="mt-3 p-3 bg-gradient-to-r from-red-900/30 to-orange-900/30 rounded-lg border border-red-400/30">
+                          <h4 className="text-sm font-semibold text-red-300 mb-2 flex items-center gap-2">
+                            <span>🎯</span>
+                            <span>Análisis de Throw</span>
+                          </h4>
+                          
+                          {/* Jugadores que throwearon */}
+                          {(() => {
+                            const throws = Object.values(throwAnalysis[match.match_id]).filter(t => t.isThrow);
+                            
+                            return throws.length > 0 && (
+                              <div className="space-y-2">
+                                <div className="text-xs text-red-300 font-medium mb-2">
+                                  🚨 Jugadores que throwearon la partida:
+                                </div>
+                                {throws.map((throwData, index) => (
+                                  <div key={index} className="bg-red-800/50 rounded-lg p-2 border border-red-600/50">
+                                    <div className="flex items-center justify-between">
+                                      <div className="flex items-center gap-2">
+                                        <span className="text-lg">{throwData.icon}</span>
+                                        <div>
+                                          <div className="text-sm font-medium text-white">
+                                            {throwData.playerName}
+                                          </div>
+                                          <div className="text-xs text-red-200">
+                                            {throwData.description}
+                                          </div>
+                                        </div>
+                                      </div>
+                                      <div className="text-right">
+                                        <div className={`text-sm font-bold ${throwData.color}`}>
+                                          {throwData.category}
+                                        </div>
+                                        <div className="text-xs text-gray-400">
+                                          {throwData.throwPercentage}% throw
+                                        </div>
+                                      </div>
+                                    </div>
+                                    <div className="mt-1 text-xs text-gray-300">
+                                      Early: {throwData.earlyScore}pts ({throwData.earlyKDA} KDA) → 
+                                      Late: {throwData.lateScore}pts ({throwData.lateKDA} KDA)
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            );
+                          })()}
+                          
+                          {/* Jugadores consistentes */}
+                          {(() => {
+                            const consistent = Object.values(throwAnalysis[match.match_id]).filter(t => !t.isThrow && t.category === 'CONSISTENTE');
+                            
+                            return consistent.length > 0 && (
+                              <div className="mt-2">
+                                <div className="text-xs text-green-300 font-medium mb-1">
+                                  👍 Jugadores consistentes:
+                                </div>
+                                <div className="text-xs text-green-200">
+                                  {consistent.map(p => p.playerName).join(', ')}
+                                </div>
+                              </div>
+                            );
+                          })()}
+                          
+                          {/* Jugadores clutch */}
+                          {(() => {
+                            const clutch = Object.values(throwAnalysis[match.match_id]).filter(t => t.category === 'CLUTCH');
+                            
+                            return clutch.length > 0 && (
+                              <div className="mt-2">
+                                <div className="text-xs text-blue-300 font-medium mb-1">
+                                  🔥 Jugadores clutch:
+                                </div>
+                                <div className="text-xs text-blue-200">
+                                  {clutch.map(p => p.playerName).join(', ')}
+                                </div>
+                              </div>
+                            );
+                          })()}
+                        </div>
+                      )}
                       
                       {/* Identificar jugadores con bajo rendimiento */}
                       {(() => {
