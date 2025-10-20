@@ -3044,6 +3044,138 @@ export default function DotaMatchesFixed() {
                       <span className="text-white text-sm">{friends.length} amigos</span>
                     </div>
                   </div>
+
+                  <div className="bg-slate-700/50 rounded-lg p-4 border border-slate-600/50">
+                    <div className="flex items-center justify-between">
+                      <span className="text-slate-300 text-sm">Partidas cargadas</span>
+                      <span className="text-white text-sm">{matches.length} partidas</span>
+                    </div>
+                  </div>
+
+                  <div className="bg-slate-700/50 rounded-lg p-4 border border-slate-600/50">
+                    <div className="flex items-center justify-between">
+                      <span className="text-slate-300 text-sm">Última actividad</span>
+                      <span className="text-white text-sm">
+                        {authenticatedUser.lastLogoff ? 
+                          new Date(authenticatedUser.lastLogoff * 1000).toLocaleDateString() : 
+                          'No disponible'
+                        }
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="bg-slate-700/50 rounded-lg p-4 border border-slate-600/50">
+                    <div className="flex items-center justify-between">
+                      <span className="text-slate-300 text-sm">Miembro desde</span>
+                      <span className="text-white text-sm">
+                        {authenticatedUser.timeCreated ? 
+                          new Date(authenticatedUser.timeCreated * 1000).toLocaleDateString() : 
+                          'No disponible'
+                        }
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="bg-slate-700/50 rounded-lg p-4 border border-slate-600/50">
+                    <div className="flex items-center justify-between">
+                      <span className="text-slate-300 text-sm">País</span>
+                      <span className="text-white text-sm">
+                        {authenticatedUser.locCountryCode ? 
+                          `🌍 ${authenticatedUser.locCountryCode}` : 
+                          'No disponible'
+                        }
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Información de la sesión */}
+              <div className="space-y-4">
+                <h3 className="text-white font-semibold text-lg flex items-center gap-2">
+                  <span>🔐</span>
+                  Información de la Sesión
+                </h3>
+                
+                <div className="grid grid-cols-1 gap-4">
+                  <div className="bg-slate-700/50 rounded-lg p-4 border border-slate-600/50">
+                    <div className="flex items-center justify-between">
+                      <span className="text-slate-300 text-sm">Sesión iniciada</span>
+                      <span className="text-white text-sm">
+                        {new Date(authenticatedUser.createdAt).toLocaleString()}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="bg-slate-700/50 rounded-lg p-4 border border-slate-600/50">
+                    <div className="flex items-center justify-between">
+                      <span className="text-slate-300 text-sm">Tiempo de sesión</span>
+                      <span className="text-white text-sm">
+                        {Math.floor((Date.now() - new Date(authenticatedUser.createdAt).getTime()) / (1000 * 60))} minutos
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="bg-slate-700/50 rounded-lg p-4 border border-slate-600/50">
+                    <div className="flex items-center justify-between">
+                      <span className="text-slate-300 text-sm">Estado de autenticación</span>
+                      <div className="flex items-center gap-2">
+                        <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
+                        <span className="text-green-400 text-sm">Activo</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Información de la aplicación */}
+              <div className="space-y-4">
+                <h3 className="text-white font-semibold text-lg flex items-center gap-2">
+                  <span>📱</span>
+                  Estado de la Aplicación
+                </h3>
+                
+                <div className="grid grid-cols-1 gap-4">
+                  <div className="bg-slate-700/50 rounded-lg p-4 border border-slate-600/50">
+                    <div className="flex items-center justify-between">
+                      <span className="text-slate-300 text-sm">Análisis de amigos</span>
+                      <span className="text-white text-sm">
+                        {companionsAnalysisComplete ? '✅ Completado' : '⏳ En progreso'}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="bg-slate-700/50 rounded-lg p-4 border border-slate-600/50">
+                    <div className="flex items-center justify-between">
+                      <span className="text-slate-300 text-sm">Filtro de tiempo</span>
+                      <span className="text-white text-sm">
+                        {timeFilter === 'all' ? 'Todas las partidas' :
+                         timeFilter === 'week' ? 'Última semana' :
+                         timeFilter === 'month' ? 'Último mes' :
+                         timeFilter === '3months' ? 'Últimos 3 meses' :
+                         timeFilter === '6months' ? 'Últimos 6 meses' :
+                         timeFilter === 'year' ? 'Último año' : 'Personalizado'}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="bg-slate-700/50 rounded-lg p-4 border border-slate-600/50">
+                    <div className="flex items-center justify-between">
+                      <span className="text-slate-300 text-sm">Partidas con amigos</span>
+                      <span className="text-white text-sm">
+                        {Object.keys(friendsInMatches).length} partidas
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="bg-slate-700/50 rounded-lg p-4 border border-slate-600/50">
+                    <div className="flex items-center justify-between">
+                      <span className="text-slate-300 text-sm">Héroes cargados</span>
+                      <span className="text-white text-sm">
+                        {Object.keys(heroes).length} héroes
+                      </span>
+                    </div>
+                  </div>
                 </div>
               </div>
 
@@ -3084,8 +3216,76 @@ export default function DotaMatchesFixed() {
                       </div>
                     </div>
                   </div>
+
+                  {/* Estadísticas adicionales */}
+                  <div className="grid grid-cols-1 gap-4 mt-4">
+                    <div className="bg-gradient-to-br from-yellow-600/20 to-yellow-700/20 rounded-lg p-4 border border-yellow-500/30">
+                      <div className="flex items-center justify-between">
+                        <span className="text-yellow-300 text-sm">Win Rate Total</span>
+                        <span className="text-yellow-400 text-lg font-bold">
+                          {matchStats.solo.wins + matchStats.party.wins + matchStats.solo.losses + matchStats.party.losses > 0 ? 
+                            Math.round(((matchStats.solo.wins + matchStats.party.wins) / (matchStats.solo.wins + matchStats.party.wins + matchStats.solo.losses + matchStats.party.losses)) * 100) : 0}%
+                        </span>
+                      </div>
+                    </div>
+                    
+                    <div className="bg-gradient-to-br from-cyan-600/20 to-cyan-700/20 rounded-lg p-4 border border-cyan-500/30">
+                      <div className="flex items-center justify-between">
+                        <span className="text-cyan-300 text-sm">Partidas con Amigos</span>
+                        <span className="text-cyan-400 text-lg font-bold">
+                          {Math.round((Object.keys(friendsInMatches).length / matches.length) * 100) || 0}%
+                        </span>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               )}
+
+              {/* Información técnica */}
+              <div className="space-y-4">
+                <h3 className="text-white font-semibold text-lg flex items-center gap-2">
+                  <span>⚙️</span>
+                  Información Técnica
+                </h3>
+                
+                <div className="grid grid-cols-1 gap-4">
+                  <div className="bg-slate-700/50 rounded-lg p-4 border border-slate-600/50">
+                    <div className="flex items-center justify-between">
+                      <span className="text-slate-300 text-sm">Versión de la app</span>
+                      <span className="text-white text-sm">v1.0.0</span>
+                    </div>
+                  </div>
+
+                  <div className="bg-slate-700/50 rounded-lg p-4 border border-slate-600/50">
+                    <div className="flex items-center justify-between">
+                      <span className="text-slate-300 text-sm">Última actualización</span>
+                      <span className="text-white text-sm">
+                        {new Date().toLocaleDateString()}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="bg-slate-700/50 rounded-lg p-4 border border-slate-600/50">
+                    <div className="flex items-center justify-between">
+                      <span className="text-slate-300 text-sm">API de Steam</span>
+                      <div className="flex items-center gap-2">
+                        <div className="w-3 h-3 bg-green-500 rounded-full"></div>
+                        <span className="text-green-400 text-sm">Conectado</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="bg-slate-700/50 rounded-lg p-4 border border-slate-600/50">
+                    <div className="flex items-center justify-between">
+                      <span className="text-slate-300 text-sm">API de OpenDota</span>
+                      <div className="flex items-center gap-2">
+                        <div className="w-3 h-3 bg-green-500 rounded-full"></div>
+                        <span className="text-green-400 text-sm">Conectado</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
 
               {/* Botones de acción */}
               <div className="flex flex-col gap-3">
