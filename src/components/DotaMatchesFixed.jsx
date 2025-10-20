@@ -29,7 +29,6 @@ export default function DotaMatchesFixed() {
   const [friendsNote, setFriendsNote] = useState('');
   const [companionsAnalysisComplete, setCompanionsAnalysisComplete] = useState(false);
 
-  // Usar el hook de autenticación de Steam
   // Estados para autenticación local
   const [authenticatedUser, setAuthenticatedUser] = useState(null);
   const [authLoading, setAuthLoading] = useState(false);
