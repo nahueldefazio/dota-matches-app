@@ -29,18 +29,12 @@ export default function DotaMatchesFixed() {
   const [friendsNote, setFriendsNote] = useState('');
   const [companionsAnalysisComplete, setCompanionsAnalysisComplete] = useState(false);
 
-  // Estados para autenticación local
-  const [authenticatedUser, setAuthenticatedUser] = useState(null);
-  const [authLoading, setAuthLoading] = useState(false);
-  const [authError, setAuthError] = useState("");
+  // Estados simplificados
   const [friends, setFriends] = useState([]);
   const [loadingFriends, setLoadingFriends] = useState(false);
   
   // Flag global de actividad para deshabilitar botones durante cualquier carga
-  const isBusy = loading || rateLimitWaiting || loadingMatchDetails || authLoading || loadingFriends || checkingFriends;
-
-  // Funciones de autenticación local
-  const isAuthenticated = !!authenticatedUser;
+  const isBusy = loading || rateLimitWaiting || loadingMatchDetails || loadingFriends || checkingFriends;
   const isSteamCallback = () => {
     const urlParams = new URLSearchParams(window.location.search);
     return urlParams.has('openid.claimed_id') && urlParams.has('openid.identity');
@@ -1420,62 +1414,9 @@ export default function DotaMatchesFixed() {
               </div>
             </div>
             <div className="flex items-center space-x-6">
-              {authenticatedUser && (
-                <div className="flex items-center space-x-4">
-                  {/* Avatar con efecto hover mejorado */}
-                  <div className="relative group" onClick={openSteamProfile}>
-                    <img 
-                      src={authenticatedUser.avatar} 
-                      alt={`Avatar de ${authenticatedUser.name}`}
-                      className="w-12 h-12 rounded-full border-2 border-orange-400 shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-110 cursor-pointer"
-                      onError={(e) => {
-                        e.target.src = `data:image/svg+xml;base64,${btoa(`<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 48 48"><rect width="48" height="48" fill="#2196F3" rx="24"/><text x="24" y="30" text-anchor="middle" fill="white" font-family="Arial" font-size="12" font-weight="bold">Steam</text></svg>`)}`;
-                      }}
-                    />
-                    <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-green-500 rounded-full border-2 border-slate-900 animate-pulse"></div>
-                    
-                    {/* Tooltip mejorado - posicionado abajo */}
-                    <div className="absolute top-full left-1/2 transform -translate-x-1/2 mt-3 px-3 py-2 bg-gradient-to-r from-slate-800 to-slate-900 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-all duration-300 whitespace-nowrap z-50 pointer-events-none shadow-xl border border-orange-400/30 max-w-[200px]">
-                      <div className="flex items-center gap-1">
-                        <span>👤</span>
-                        <span>Ver perfil completo</span>
-                      </div>
-                      {/* Flecha del tooltip apuntando hacia arriba */}
-                      <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-3 border-r-3 border-b-3 border-l-transparent border-r-transparent border-b-slate-900"></div>
-                    </div>
-                    
-                    {/* Overlay de hover */}
-                    <div className="absolute inset-0 rounded-full bg-gradient-to-br from-orange-400/20 to-red-500/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"></div>
-                  </div>
-                  
-                  {/* Información del usuario */}
-                  <div className="flex flex-col">
-                    <span className="text-white font-semibold text-sm">{authenticatedUser.name}</span>
-                    <span className="text-orange-300 text-xs">Steam ID: {steamId}</span>
-                  </div>
-                  
-                  {/* Botones de acción */}
-                  <div className="flex space-x-2">
-                    <button
-                      disabled={isBusy}
-                      onClick={() => window.open(`https://steamcommunity.com/profiles/${steam64Id}`, '_blank')}
-                      className="px-4 py-2 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white rounded-lg text-sm font-medium transition-all duration-200 shadow-lg hover:shadow-xl hover:scale-105 flex items-center space-x-2"
-                    >
-                      <span>👤</span>
-                      <span>Perfil Steam</span>
-                    </button>
-                    
-                    <button
-                      disabled={isBusy}
-                      onClick={logout}
-                      className="px-4 py-2 bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white rounded-lg text-sm font-medium transition-all duration-200 shadow-lg hover:shadow-xl hover:scale-105 flex items-center space-x-2"
-                    >
-                      <span>🚪</span>
-                      <span>Cerrar sesión</span>
-                    </button>
-                  </div>
-                </div>
-              )}
+              <div className="text-white text-sm">
+                <span>🎮 Dota 2 Matches Analyzer</span>
+              </div>
             </div>
           </div>
         </div>
