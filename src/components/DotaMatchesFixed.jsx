@@ -194,68 +194,6 @@ export default function DotaMatchesFixed() {
     window.location.href = '/login';
   };
 
-  // Función para obtener amigos de Steam usando la API real
-  const fetchSteamFriends = async (steamIdParam) => {
-    const steamIdToUse = steamIdParam || steam64Id; // Usar el parámetro o el Steam ID de 64 bits por defecto
-    if (!steamIdToUse) {
-      console.log('❌ No hay Steam ID disponible para obtener amigos');
-      return;
-    }
-
-    setLoadingFriends(true);
-    try {
-      
-      // Usar la API del backend en lugar de simular
-      const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'https://dota-matches-jw2gbvev0-nahueldefazios-projects.vercel.app';
-      const response = await fetch(`${apiBaseUrl}/api/auth/steam/friends?steamId=${steamIdToUse}`);
-      
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || `Error ${response.status}: ${response.statusText}`);
-      }
-      
-      const data = await response.json();
-      console.log(`👥 Amigos obtenidos: ${data.count} amigos`);
-      
-      if (data.friends && data.friends.length > 0) {
-        setFriends(data.friends);
-        console.log(`✅ Lista de amigos cargada exitosamente: ${data.friends.length} amigos`);
-        
-        // Mostrar información sobre si se usan amigos reales o predefinidos
-        if (data.note && data.note.includes('predefinida')) {
-          console.log('ℹ️ Nota: Se están usando amigos predefinidos porque el perfil de Steam es privado');
-          console.log('💡 Para ver amigos reales, configura tu perfil de Steam como público');
-          setFriendsNote('Se están usando amigos de demostración porque tu perfil de Steam es privado. Para ver tus amigos reales, configura tu perfil como público.');
-        } else {
-          setFriendsNote('');
-        }
-        
-        // Mostrar información de los amigos en consola
-        data.friends.forEach((friend, index) => {
-          const statusText = {
-            0: '🔴 Offline',
-            1: '🟢 Online',
-            2: '🟡 Busy',
-            3: '🟠 Away',
-            4: '😴 Snooze',
-            5: '💼 Looking to trade',
-            6: '🎮 Looking to play'
-          }[friend.personastate] || '❓ Unknown';
-          
-          console.log(`👤 Amigo ${index + 1}: ${friend.personaname} (${friend.steamid}) - ${statusText}`);
-        });
-      } else {
-        console.log('❌ No se encontraron amigos');
-        setFriends([]);
-      }
-      
-    } catch (error) {
-      console.error('❌ Error obteniendo amigos de Steam:', error);
-      setFriends([]);
-    } finally {
-      setLoadingFriends(false);
-    }
-  };
 
   // Función para convertir Steam64 a Steam32
   const convertSteam64ToSteam32 = (steam64) => {
