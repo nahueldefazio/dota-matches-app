@@ -65,17 +65,57 @@ export const useSteamAuth = () => {
 
       const steamId = steamIdMatch[1];
       
-      // Crear datos del usuario con información real de Steam
+      // Obtener datos reales del perfil de Steam
+      console.log('🔍 Obteniendo perfil real de Steam...');
+      try {
+        const profileResponse = await fetch(`https://api.steampowered.com/ISteamUser/GetPlayerSummaries/v0002/?key=YOUR_API_KEY&steamids=${steamId}`);
+        
+        if (profileResponse.ok) {
+          const profileData = await profileResponse.json();
+          const player = profileData.response.players[0];
+          
+          if (player) {
+            const userData = {
+              steamID: steamId,
+              name: player.personaname || `Usuario Steam ${steamId.substring(0, 8)}`,
+              avatar: player.avatarfull || player.avatarmedium || player.avatar,
+              profileUrl: player.profileurl || `https://steamcommunity.com/profiles/${steamId}/`,
+              personState: player.personastate || 0,
+              communityVisibility: player.communityvisibilitystate || 3,
+              createdAt: new Date().toISOString()
+            };
+            
+            login(userData);
+            console.log('✅ Usuario autenticado (real):', userData);
+            
+            // Cargar amigos automáticamente
+            console.log('👥 Cargando amigos automáticamente...');
+            await fetchSteamFriends(steamId);
+            
+            return userData;
+          }
+        }
+      } catch (error) {
+        console.warn('⚠️ No se pudo obtener perfil real, usando datos simulados...');
+      }
+      
+      // Fallback con datos simulados si no se puede obtener información real
       const userData = {
         steamID: steamId,
         name: `Usuario Steam ${steamId.substring(0, 8)}`,
         avatar: `https://steamcdn-a.akamaihd.net/steamcommunity/public/images/avatars/fe/fef49e7fa7e1997310d705b2a6158ff8dc1cdfeb_full.jpg`,
         profileUrl: `https://steamcommunity.com/profiles/${steamId}/`,
+        personState: 0,
+        communityVisibility: 3,
         createdAt: new Date().toISOString()
       };
 
       login(userData);
-      console.log('✅ Usuario autenticado:', userData);
+      console.log('✅ Usuario autenticado (simulado):', userData);
+      
+      // Cargar amigos simulados
+      console.log('👥 Cargando amigos simulados...');
+      await fetchSteamFriends(steamId);
       
       // Limpiar la URL para remover parámetros de Steam
       window.history.replaceState({}, document.title, window.location.pathname);
@@ -104,27 +144,62 @@ export const useSteamAuth = () => {
       setLoadingFriends(true);
       console.log(`🆔 Obteniendo amigos para Steam ID: ${steamId}`);
       
-      // Simular carga de amigos (en una implementación real, harías fetch a una API)
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      // Intentar obtener amigos reales de Steam
+      try {
+        const friendsResponse = await fetch(`https://api.steampowered.com/ISteamUser/GetFriendList/v0001/?key=YOUR_API_KEY&steamid=${steamId}&relationship=friend`);
+        
+        if (friendsResponse.ok) {
+          const friendsData = await friendsResponse.json();
+          const friendIds = friendsData.friendslist.friends.map(friend => friend.steamid).join(',');
+          
+          if (friendIds) {
+            const friendsDetailsResponse = await fetch(`https://api.steampowered.com/ISteamUser/GetPlayerSummaries/v0002/?key=YOUR_API_KEY&steamids=${friendIds}`);
+            
+            if (friendsDetailsResponse.ok) {
+              const friendsDetails = await friendsDetailsResponse.json();
+              const friends = friendsDetails.response.players.map(player => ({
+                steamid: player.steamid,
+                personaname: player.personaname,
+                avatar: player.avatarfull || player.avatarmedium || player.avatar,
+                personastate: player.personastate || 0
+              }));
+              
+              setFriends(friends);
+              console.log(`✅ Lista de amigos reales cargada: ${friends.length} amigos`);
+              return;
+            }
+          }
+        }
+      } catch (error) {
+        console.warn('⚠️ No se pudieron obtener amigos reales, usando datos simulados...');
+      }
       
-      // Datos simulados de amigos
+      // Fallback con datos simulados
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      
       const mockFriends = [
         {
           steamid: '76561198012345678',
-          personaname: 'Amigo 1',
-          avatar: 'https://via.placeholder.com/64x64/2196F3/FFFFFF?text=A1',
+          personaname: 'Amigo Demo 1',
+          avatar: 'https://steamcdn-a.akamaihd.net/steamcommunity/public/images/avatars/fe/fef49e7fa7e1997310d705b2a6158ff8dc1cdfeb_full.jpg',
           personastate: 1
         },
         {
           steamid: '76561198087654321',
-          personaname: 'Amigo 2', 
-          avatar: 'https://via.placeholder.com/64x64/4CAF50/FFFFFF?text=A2',
+          personaname: 'Amigo Demo 2', 
+          avatar: 'https://steamcdn-a.akamaihd.net/steamcommunity/public/images/avatars/fe/fef49e7fa7e1997310d705b2a6158ff8dc1cdfeb_full.jpg',
           personastate: 0
+        },
+        {
+          steamid: '76561198123456789',
+          personaname: 'Amigo Demo 3',
+          avatar: 'https://steamcdn-a.akamaihd.net/steamcommunity/public/images/avatars/fe/fef49e7fa7e1997310d705b2a6158ff8dc1cdfeb_full.jpg',
+          personastate: 1
         }
       ];
       
       setFriends(mockFriends);
-      console.log(`✅ Lista de amigos cargada: ${mockFriends.length} amigos`);
+      console.log(`✅ Lista de amigos simulados cargada: ${mockFriends.length} amigos`);
       
     } catch (error) {
       console.error('❌ Error obteniendo amigos de Steam:', error);
