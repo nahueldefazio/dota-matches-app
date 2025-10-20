@@ -65,14 +65,18 @@ export const useSteamAuth = () => {
 
       const steamId = steamIdMatch[1];
       
-      // Obtener datos reales del perfil de Steam
+      // Obtener datos reales del perfil de Steam usando proxy
       console.log('🔍 Obteniendo perfil real de Steam...');
       try {
         const steamApiKey = import.meta.env.VITE_STEAM_API_KEY;
         if (!steamApiKey) {
           throw new Error('Steam API Key no configurada');
         }
-        const profileResponse = await fetch(`https://api.steampowered.com/ISteamUser/GetPlayerSummaries/v0002/?key=${steamApiKey}&steamids=${steamId}`);
+        
+        // Usar proxy para evitar CORS
+        const proxyUrl = 'https://api.allorigins.win/raw?url=';
+        const steamUrl = `https://api.steampowered.com/ISteamUser/GetPlayerSummaries/v0002/?key=${steamApiKey}&steamids=${steamId}`;
+        const profileResponse = await fetch(proxyUrl + encodeURIComponent(steamUrl));
         
         if (profileResponse.ok) {
           const profileData = await profileResponse.json();
@@ -100,7 +104,7 @@ export const useSteamAuth = () => {
           }
         }
       } catch (error) {
-        console.warn('⚠️ No se pudo obtener perfil real, usando datos simulados...');
+        console.warn('⚠️ No se pudo obtener perfil real, usando datos simulados...', error);
       }
       
       // Fallback con datos simulados si no se puede obtener información real
@@ -148,20 +152,25 @@ export const useSteamAuth = () => {
       setLoadingFriends(true);
       console.log(`🆔 Obteniendo amigos para Steam ID: ${steamId}`);
       
-      // Intentar obtener amigos reales de Steam
+      // Intentar obtener amigos reales de Steam usando proxy
       try {
         const steamApiKey = import.meta.env.VITE_STEAM_API_KEY;
         if (!steamApiKey) {
           throw new Error('Steam API Key no configurada');
         }
-        const friendsResponse = await fetch(`https://api.steampowered.com/ISteamUser/GetFriendList/v0001/?key=${steamApiKey}&steamid=${steamId}&relationship=friend`);
+        
+        // Usar proxy para evitar CORS
+        const proxyUrl = 'https://api.allorigins.win/raw?url=';
+        const friendsUrl = `https://api.steampowered.com/ISteamUser/GetFriendList/v0001/?key=${steamApiKey}&steamid=${steamId}&relationship=friend`;
+        const friendsResponse = await fetch(proxyUrl + encodeURIComponent(friendsUrl));
         
         if (friendsResponse.ok) {
           const friendsData = await friendsResponse.json();
           const friendIds = friendsData.friendslist.friends.map(friend => friend.steamid).join(',');
           
           if (friendIds) {
-            const friendsDetailsResponse = await fetch(`https://api.steampowered.com/ISteamUser/GetPlayerSummaries/v0002/?key=${steamApiKey}&steamids=${friendIds}`);
+            const friendsDetailsUrl = `https://api.steampowered.com/ISteamUser/GetPlayerSummaries/v0002/?key=${steamApiKey}&steamids=${friendIds}`;
+            const friendsDetailsResponse = await fetch(proxyUrl + encodeURIComponent(friendsDetailsUrl));
             
             if (friendsDetailsResponse.ok) {
               const friendsDetails = await friendsDetailsResponse.json();
@@ -179,7 +188,7 @@ export const useSteamAuth = () => {
           }
         }
       } catch (error) {
-        console.warn('⚠️ No se pudieron obtener amigos reales, usando datos simulados...');
+        console.warn('⚠️ No se pudieron obtener amigos reales, usando datos simulados...', error);
       }
       
       // Fallback con datos simulados
