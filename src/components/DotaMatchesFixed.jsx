@@ -1349,7 +1349,7 @@ export default function DotaMatchesFixed() {
               {authenticatedUser && (
                 <div className="flex items-center space-x-4">
                   {/* Avatar con efecto hover mejorado */}
-                  <div className="relative group">
+                  <div className="relative group" onClick={() => window.open(`https://steamcommunity.com/profiles/${authenticatedUser.steamID}`, '_blank')}>
                     <img 
                       src={authenticatedUser.avatar} 
                       alt={`Avatar de ${authenticatedUser.name}`}
@@ -1371,10 +1371,16 @@ export default function DotaMatchesFixed() {
                   </div>
                   
                   {/* Información del usuario */}
-                  <div className="flex flex-col">
-                    <span className="text-white font-semibold text-sm">{authenticatedUser.name}</span>
-                    <span className="text-orange-300 text-xs">Steam ID: {authenticatedUser.steamID}</span>
-                    <span className="text-blue-300 text-xs">Amigos: {friends.length}</span>
+                  <div className="flex flex-col min-w-0">
+                    <span className="text-white font-semibold text-sm truncate max-w-[150px]" title={authenticatedUser.name}>
+                      {authenticatedUser.name}
+                    </span>
+                    <span className="text-orange-300 text-xs truncate max-w-[150px]" title={`Steam ID: ${authenticatedUser.steamID}`}>
+                      ID: {authenticatedUser.steamID.substring(0, 8)}...
+                    </span>
+                    <span className="text-blue-300 text-xs">
+                      👥 {friends.length} amigos
+                    </span>
                   </div>
                   
                   {/* Botones de acción */}
