@@ -269,12 +269,9 @@ export default function DotaMatchesFixed() {
     return steam32.toString();
   };
 
-  // Obtener Steam IDs del usuario autenticado
-  const authenticatedSteam64Id = authenticatedUser?.steamID || "";
-  
-  // Convertir Steam ID de 64 bits a 32 bits si está disponible
-  const steam64Id = authenticatedSteam64Id || "";
-  const steamId = authenticatedSteam64Id ? convertSteam64ToSteam32(authenticatedSteam64Id) : "";
+  // Estados para Steam ID
+  const [steamId, setSteamId] = useState("");
+  const [steam64Id, setSteam64Id] = useState("");
   
 
   // Manejar callback de Steam
@@ -284,14 +281,14 @@ export default function DotaMatchesFixed() {
     }
   }, []);
 
-  // Mostrar selector automáticamente después del login
+  // Mostrar selector automáticamente
   useEffect(() => {
-    if (authenticatedUser && !hasShownInitialSelector && !matchesLoaded) {
-      console.log('🎯 Usuario autenticado por primera vez - Mostrando selector de período');
+    if (!hasShownInitialSelector && !matchesLoaded) {
+      console.log('🎯 Mostrando selector de período');
       setShowCalendar(true);
       setHasShownInitialSelector(true);
     }
-  }, [authenticatedUser, hasShownInitialSelector, matchesLoaded]);
+  }, [hasShownInitialSelector, matchesLoaded]);
 
   // Recalcular estadísticas cuando cambien los amigos detectados
   useEffect(() => {
@@ -806,12 +803,11 @@ export default function DotaMatchesFixed() {
 
   const loadMatchesWithTimeFilter = async (timeFilter) => {
     console.log('🔍 Debug - Variables de estado:');
-    console.log('  - authenticatedUser:', authenticatedUser);
     console.log('  - steamId:', steamId);
     console.log('  - steam64Id:', steam64Id);
     
-    if (!authenticatedUser || !steamId || steamId.trim() === "") {
-      alert('Primero debes autenticarte con Steam');
+    if (!steamId || steamId.trim() === "") {
+      alert('Primero debes ingresar un Steam ID');
       return;
     }
 
@@ -1461,22 +1457,75 @@ export default function DotaMatchesFixed() {
       )}
 
 
-      {/* Información adicional del usuario */}
-      {authenticatedUser && (
-        <div className="mb-6 bg-gradient-to-r from-green-50 to-blue-50 border border-green-200 rounded-lg p-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-4">
-              <div className="text-sm text-gray-600">
-                <span className="font-medium">Steam ID:</span> {steamId}
-              </div>
-              <div className="text-sm text-gray-600">
-                <span className="font-medium">Amigos cargados:</span> {friends.length}
-                {loadingFriends && <span className="text-blue-600"> (cargando...)</span>}
-              </div>
+      {/* Input para Steam ID */}
+      <div className="mb-6 bg-white p-4 rounded-lg shadow-md">
+        <form onSubmit={(e) => {
+          e.preventDefault();
+          if (steamId.trim() !== "") {
+            setSteamId(steamId.trim());
+          }
+        }} className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label htmlFor="steamId" className="block text-sm font-medium text-gray-700 mb-2">
+                Steam ID (32-bit)
+              </label>
+              <input
+                type="text"
+                id="steamId"
+                value={steamId}
+                onChange={(e) => setSteamId(e.target.value)}
+                placeholder="Ej: 72810287"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+            </div>
+            <div>
+              <label htmlFor="steam64Id" className="block text-sm font-medium text-gray-700 mb-2">
+                Steam ID (64-bit)
+              </label>
+              <input
+                type="text"
+                id="steam64Id"
+                value={steam64Id}
+                onChange={(e) => {
+                  const steam64 = e.target.value;
+                  setSteam64Id(steam64);
+                  if (steam64.trim() !== "") {
+                    const steam32 = convertSteam64ToSteam32(steam64);
+                    if (steam32 && steam32 !== "0") {
+                      setSteamId(steam32);
+                    }
+                  }
+                }}
+                placeholder="Ej: 76561198045611095"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+              />
             </div>
           </div>
-        </div>
-      )}
+          <div className="flex justify-center">
+            <button
+              type="submit"
+              disabled={isBusy}
+              className={`px-8 py-2 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors flex items-center gap-2 ${
+                isBusy 
+                  ? 'bg-gray-400 cursor-not-allowed' 
+                  : 'bg-blue-500 hover:bg-blue-600 text-white'
+              }`}
+            >
+              {isBusy ? (
+                <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                  Procesando...
+                </>
+              ) : (
+                <>
+                  🔍 Buscar Partidas
+                </>
+              )}
+            </button>
+          </div>
+        </form>
+      </div>
 
       {/* Notificación sobre amigos predefinidos */}
       {friendsNote && (
@@ -1495,7 +1544,7 @@ export default function DotaMatchesFixed() {
       )}
 
       {/* Botón para cambiar período de partidas */}
-      {authenticatedUser && matchesLoaded && (
+      {matchesLoaded && (
         <div className="mb-6 bg-gray-50 border border-gray-200 rounded-lg p-4">
           <div className="flex items-center justify-between mb-3">
             <div>
@@ -1547,7 +1596,7 @@ export default function DotaMatchesFixed() {
       )}
 
       {/* Selector de tiempo épico para cargar partidas */}
-      {authenticatedUser && !matchesLoaded && (
+      {!matchesLoaded && (
         <div className="relative z-10 mb-8">
           <div className="bg-gradient-to-br from-slate-800/95 via-slate-900/95 to-slate-800/95 backdrop-blur-lg border border-orange-400/30 rounded-2xl p-8 shadow-2xl">
             {/* Efecto de brillo superior */}
@@ -1776,8 +1825,8 @@ export default function DotaMatchesFixed() {
         </div>
       )}
 
-      {/* Pantalla de login moderna */}
-      {!authenticatedUser && (
+      {/* Pantalla de bienvenida */}
+      {!steamId && (
         <div className="relative z-10 flex items-center justify-center min-h-[70vh]">
           <div className="w-full max-w-md mx-auto">
             {/* Card principal de login */}
@@ -2849,24 +2898,19 @@ export default function DotaMatchesFixed() {
       )}
 
       {/* Popup del perfil de Steam */}
-      {showSteamProfile && authenticatedUser && (
+      {showSteamProfile && (
         <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-2xl">
             {/* Header del popup */}
             <div className="sticky top-0 bg-gradient-to-r from-slate-800 to-slate-900 text-white p-6 rounded-t-lg">
               <div className="flex justify-between items-center">
                 <div className="flex items-center space-x-4">
-                  <img 
-                    src={authenticatedUser.avatar} 
-                    alt={authenticatedUser.name}
-                    className="w-16 h-16 rounded-full border-4 border-orange-400 shadow-xl"
-                    onError={(e) => {
-                      e.target.src = `data:image/svg+xml;base64,${btoa(`<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64"><rect width="64" height="64" fill="#2196F3" rx="32"/><text x="32" y="40" text-anchor="middle" fill="white" font-family="Arial" font-size="16" font-weight="bold">Steam</text></svg>`)}`;
-                    }}
-                  />
+                  <div className="w-16 h-16 rounded-full border-4 border-orange-400 shadow-xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
+                    <span className="text-2xl">🎮</span>
+                  </div>
                   <div>
-                    <h2 className="text-2xl font-bold">{authenticatedUser.name}</h2>
-                    <p className="text-orange-300">Perfil de Steam</p>
+                    <h2 className="text-2xl font-bold">Dota 2 Matches</h2>
+                    <p className="text-orange-300">Análisis de partidas</p>
                   </div>
                 </div>
                 <button
@@ -2889,7 +2933,7 @@ export default function DotaMatchesFixed() {
                     Información del Usuario
                   </h3>
                   <div className="space-y-2 text-sm">
-                    <div><span className="font-medium text-blue-700">Nombre:</span> {authenticatedUser.name}</div>
+                    <div><span className="font-medium text-blue-700">Aplicación:</span> Dota 2 Matches Analyzer</div>
                     <div><span className="font-medium text-blue-700">Steam ID 32-bit:</span> {steamId}</div>
                     <div><span className="font-medium text-blue-700">Steam ID 64-bit:</span> {steam64Id}</div>
                     <div><span className="font-medium text-blue-700">Estado:</span> 
@@ -2966,14 +3010,9 @@ export default function DotaMatchesFixed() {
               {/* Avatar grande */}
               <div className="bg-gradient-to-br from-gray-50 to-gray-100 rounded-lg p-6 text-center">
                 <h3 className="font-semibold text-gray-800 mb-4">Avatar de Steam</h3>
-                <img 
-                  src={authenticatedUser.avatar} 
-                  alt={`Avatar completo de ${authenticatedUser.name}`}
-                  className="w-32 h-32 rounded-full border-4 border-orange-400 shadow-2xl mx-auto hover:scale-105 transition-transform duration-300"
-                  onError={(e) => {
-                    e.target.src = `data:image/svg+xml;base64,${btoa(`<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128"><rect width="128" height="128" fill="#2196F3" rx="64"/><text x="64" y="80" text-anchor="middle" fill="white" font-family="Arial" font-size="32" font-weight="bold">Steam</text></svg>`)}`;
-                  }}
-                />
+                <div className="w-32 h-32 rounded-full border-4 border-orange-400 shadow-2xl mx-auto bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
+                  <span className="text-6xl">🎮</span>
+                </div>
                 <p className="text-gray-600 text-sm mt-3">Avatar actual de tu perfil de Steam</p>
               </div>
             </div>
