@@ -1877,7 +1877,7 @@ export default function DotaMatchesFixed() {
               {/* Botón de login */}
               <div className="space-y-4">
                 <button
-                  disabled={isBusy || authLoading}
+                  disabled={isBusy}
                   onClick={handleSteamAuth}
                   className="w-full group relative overflow-hidden bg-gradient-to-r from-blue-600 via-blue-700 to-blue-800 hover:from-blue-700 hover:via-blue-800 hover:to-blue-900 disabled:from-gray-600 disabled:to-gray-700 text-white font-bold py-4 px-6 rounded-xl transition-all duration-300 transform hover:scale-105 hover:shadow-2xl disabled:scale-100 disabled:shadow-none"
                 >
@@ -1885,34 +1885,16 @@ export default function DotaMatchesFixed() {
                   <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -skew-x-12 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700"></div>
                   
                   <div className="relative flex items-center justify-center gap-3">
-                    {authLoading ? (
-                      <>
-                        <div className="w-6 h-6 border-3 border-white border-t-transparent rounded-full animate-spin"></div>
-                        <span className="text-lg">Autenticando con Steam...</span>
-                      </>
-                    ) : (
-                      <>
-                        <div className="w-8 h-8 bg-gradient-to-br from-white to-gray-200 rounded-full flex items-center justify-center">
-                          <span className="text-blue-600 font-bold text-lg">S</span>
-                        </div>
-                        <div className="text-left">
-                          <div className="text-lg">Iniciar sesión con Steam</div>
-                          <div className="text-blue-200 text-sm">Acceso rápido y seguro</div>
-                        </div>
-                      </>
-                    )}
+                    <div className="w-8 h-8 bg-gradient-to-br from-white to-gray-200 rounded-full flex items-center justify-center">
+                      <span className="text-blue-600 font-bold text-lg">S</span>
+                    </div>
+                    <div className="text-left">
+                      <div className="text-lg">Iniciar sesión con Steam</div>
+                      <div className="text-blue-200 text-sm">Acceso rápido y seguro</div>
+                    </div>
                   </div>
                 </button>
                 
-                {authError && (
-                  <div className="bg-red-500/20 border border-red-400/50 rounded-xl p-4">
-                    <div className="flex items-center gap-2 text-red-300">
-                      <span>⚠️</span>
-                      <span className="font-medium">Error de autenticación</span>
-                    </div>
-                    <p className="text-red-200 text-sm mt-1">{authError}</p>
-                  </div>
-                )}
               </div>
               
               {/* Footer */}
