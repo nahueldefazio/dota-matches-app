@@ -80,9 +80,6 @@ export default function DotaMatchesFixed() {
   // Función para iniciar autenticación con Steam
   const loginWithSteam = () => {
     try {
-      setAuthLoading(true);
-      setAuthError(null);
-      
       // Usar autenticación local - Steam regresará a la página actual
       const realm = window.location.origin;
       const returnUrl = window.location.href;
@@ -101,16 +98,12 @@ export default function DotaMatchesFixed() {
       
     } catch (err) {
       console.error('Error iniciando sesión con Steam:', err);
-      setAuthError('Error al iniciar sesión con Steam');
-      setAuthLoading(false);
     }
   };
 
   // Función para procesar el callback de Steam
   const handleSteamCallback = async () => {
     try {
-      setAuthLoading(true);
-      setAuthError(null);
 
       const urlParams = new URLSearchParams(window.location.search);
       
@@ -153,9 +146,7 @@ export default function DotaMatchesFixed() {
       
     } catch (err) {
       console.error('Error procesando callback de Steam:', err);
-      setAuthError(`Error de autenticación: ${err.message}`);
-    } finally {
-      setAuthLoading(false);
+    }
     }
   };
 
@@ -168,7 +159,6 @@ export default function DotaMatchesFixed() {
     setMatchesLoaded(false);
     setStatsReady(false);
     setFriendsInMatches({});
-    setAuthError("");
     setLoading(false);
     setError("");
     setCheckingFriends(false);
