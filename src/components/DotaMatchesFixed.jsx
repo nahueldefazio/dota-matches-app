@@ -3033,7 +3033,8 @@ export default function DotaMatchesFixed() {
                       <span className="text-slate-300 text-sm">Visibilidad</span>
                       <span className="text-white text-sm">
                         {authenticatedUser.communityVisibility === 3 ? '🔒 Privado' : 
-                         authenticatedUser.communityVisibility === 2 ? '🔓 Amigos' : '🌐 Público'}
+                         authenticatedUser.communityVisibility === 2 ? '🔓 Amigos' : 
+                         authenticatedUser.communityVisibility === 1 ? '🌐 Público' : '❓ Desconocido'}
                       </span>
                     </div>
                   </div>

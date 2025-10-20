@@ -93,6 +93,13 @@ export const useSteamAuth = () => {
               profileUrl: player.profileurl || `https://steamcommunity.com/profiles/${steamId}/`,
               personState: player.personastate || 0,
               communityVisibility: player.communityvisibilitystate || 3,
+              lastLogoff: player.lastlogoff,
+              timeCreated: player.timecreated,
+              locCountryCode: player.loccountrycode,
+              profileState: player.profilestate,
+              commentPermission: player.commentpermission,
+              primaryClanId: player.primaryclanid,
+              personaStateFlags: player.personastateflags,
               createdAt: new Date().toISOString()
             };
             
@@ -120,8 +127,15 @@ export const useSteamAuth = () => {
         name: `Usuario Steam ${steamId.substring(0, 8)}`,
         avatar: `https://steamcdn-a.akamaihd.net/steamcommunity/public/images/avatars/fe/fef49e7fa7e1997310d705b2a6158ff8dc1cdfeb_full.jpg`,
         profileUrl: `https://steamcommunity.com/profiles/${steamId}/`,
-        personState: 0,
-        communityVisibility: 3,
+        personState: 1, // Online
+        communityVisibility: 1, // Público
+        lastLogoff: Math.floor(Date.now() / 1000) - 3600, // 1 hora atrás
+        timeCreated: Math.floor(Date.now() / 1000) - (365 * 24 * 60 * 60), // 1 año atrás
+        locCountryCode: 'AR', // Argentina
+        profileState: 1,
+        commentPermission: 1,
+        primaryClanId: '103582791429521408',
+        personaStateFlags: 0,
         createdAt: new Date().toISOString()
       };
 
