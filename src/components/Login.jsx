@@ -1,6 +1,6 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import SteamAuth from './SteamAuth';
+import SteamAuthLocal from './SteamAuthLocal';
 
 const Login = () => {
   const navigate = useNavigate();
@@ -47,7 +47,7 @@ const Login = () => {
               </p>
             </div>
             
-            <SteamAuth onLoginSuccess={handleLoginSuccess} />
+            <SteamAuthLocal onLoginSuccess={handleLoginSuccess} />
           </div>
 
           {/* Features */}
