@@ -1502,6 +1502,17 @@ export default function DotaMatchesFixed() {
               <p className="text-sm text-gray-600">
                 Período actual: <span className="font-medium">{getPeriodText()}</span>
               </p>
+              <p className="text-xs text-green-600 flex items-center gap-1 mt-1">
+                <span>📅</span>
+                <span>Datos actualizados: {new Date().toLocaleDateString('es-ES', { 
+                  weekday: 'long', 
+                  year: 'numeric', 
+                  month: 'long', 
+                  day: 'numeric',
+                  hour: '2-digit',
+                  minute: '2-digit'
+                })}</span>
+              </p>
               {cache[`${steamId}_${timeFilter}`] && (
                 <p className="text-xs text-blue-600 flex items-center gap-1 mt-1">
                   <span>📦</span>
@@ -3256,7 +3267,14 @@ export default function DotaMatchesFixed() {
                     <div className="flex items-center justify-between">
                       <span className="text-slate-300 text-sm">Última actualización</span>
                       <span className="text-white text-sm">
-                        {new Date().toLocaleDateString()}
+                        {new Date().toLocaleDateString('es-ES', { 
+                          weekday: 'long', 
+                          year: 'numeric', 
+                          month: 'long', 
+                          day: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit'
+                        })}
                       </span>
                     </div>
                   </div>
