@@ -525,15 +525,27 @@ export default function DotaMatchesFixed() {
 
   // Función para verificar si hay amigos en una partida
   const checkFriendsInMatch = async (match) => {
-    if (!friends || friends.length === 0) return [];
+    if (!friends || friends.length === 0) {
+      console.log('❌ No hay amigos para verificar en partida', match.match_id);
+      return [];
+    }
+    
+    console.log(`🔍 Verificando amigos en partida ${match.match_id}...`);
+    console.log(`🔍 Amigos disponibles:`, friends.length);
     
     try {
       const response = await fetch(`https://api.opendota.com/api/matches/${match.match_id}`);
       if (!response.ok) {
+        console.log(`❌ Error API para partida ${match.match_id}: ${response.status}`);
         throw new Error(`Error ${response.status}: ${response.statusText}`);
       }
       const matchDetails = await response.json();
-      if (!matchDetails || !matchDetails.players) return [];
+      if (!matchDetails || !matchDetails.players) {
+        console.log(`❌ Sin datos de jugadores para partida ${match.match_id}`);
+        return [];
+      }
+      
+      console.log(`✅ Datos de partida ${match.match_id} obtenidos, ${matchDetails.players.length} jugadores`);
     
     const friendsFound = [];
     
@@ -564,6 +576,11 @@ export default function DotaMatchesFixed() {
           break;
         }
       }
+    }
+    
+    console.log(`🔍 Resultado para partida ${match.match_id}: ${friendsFound.length} amigos encontrados`);
+    if (friendsFound.length > 0) {
+      console.log(`✅ Amigos encontrados:`, friendsFound.map(f => f.personaname));
     }
     
     return friendsFound;
