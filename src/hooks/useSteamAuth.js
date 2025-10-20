@@ -68,7 +68,11 @@ export const useSteamAuth = () => {
       // Obtener datos reales del perfil de Steam
       console.log('🔍 Obteniendo perfil real de Steam...');
       try {
-        const profileResponse = await fetch(`https://api.steampowered.com/ISteamUser/GetPlayerSummaries/v0002/?key=YOUR_API_KEY&steamids=${steamId}`);
+        const steamApiKey = import.meta.env.VITE_STEAM_API_KEY;
+        if (!steamApiKey) {
+          throw new Error('Steam API Key no configurada');
+        }
+        const profileResponse = await fetch(`https://api.steampowered.com/ISteamUser/GetPlayerSummaries/v0002/?key=${steamApiKey}&steamids=${steamId}`);
         
         if (profileResponse.ok) {
           const profileData = await profileResponse.json();
@@ -146,14 +150,18 @@ export const useSteamAuth = () => {
       
       // Intentar obtener amigos reales de Steam
       try {
-        const friendsResponse = await fetch(`https://api.steampowered.com/ISteamUser/GetFriendList/v0001/?key=YOUR_API_KEY&steamid=${steamId}&relationship=friend`);
+        const steamApiKey = import.meta.env.VITE_STEAM_API_KEY;
+        if (!steamApiKey) {
+          throw new Error('Steam API Key no configurada');
+        }
+        const friendsResponse = await fetch(`https://api.steampowered.com/ISteamUser/GetFriendList/v0001/?key=${steamApiKey}&steamid=${steamId}&relationship=friend`);
         
         if (friendsResponse.ok) {
           const friendsData = await friendsResponse.json();
           const friendIds = friendsData.friendslist.friends.map(friend => friend.steamid).join(',');
           
           if (friendIds) {
-            const friendsDetailsResponse = await fetch(`https://api.steampowered.com/ISteamUser/GetPlayerSummaries/v0002/?key=YOUR_API_KEY&steamids=${friendIds}`);
+            const friendsDetailsResponse = await fetch(`https://api.steampowered.com/ISteamUser/GetPlayerSummaries/v0002/?key=${steamApiKey}&steamids=${friendIds}`);
             
             if (friendsDetailsResponse.ok) {
               const friendsDetails = await friendsDetailsResponse.json();
