@@ -2641,313 +2641,6 @@ export default function DotaMatchesFixed() {
                     <span className="ml-1 text-white">{Math.floor(match.duration / 60)} min</span>
                   </div>
                   
-                  {/* Análisis de rendimiento */}
-                  {playerPerformanceAnalysis[match.match_id] && (
-                    <div className="mt-3 p-4 bg-gradient-to-br from-slate-800/40 via-slate-900/40 to-slate-800/40 rounded-xl border border-slate-600/30 shadow-xl">
-                      <div className="flex items-center gap-3 mb-4">
-                        <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
-                          <span className="text-white text-sm">📊</span>
-                        </div>
-                        <h4 className="text-lg font-bold text-white">Análisis de Rendimiento</h4>
-                      </div>
-                      
-                      <div className="grid grid-cols-1 gap-3">
-                        {Object.entries(playerPerformanceAnalysis[match.match_id])
-                          .sort(([,a], [,b]) => b.score - a.score)
-                          .slice(0, 3)
-                          .map(([accountId, analysis], index) => (
-                            <div key={accountId} className={`relative overflow-hidden rounded-xl border-2 transition-all duration-200 hover:scale-[1.02] ${
-                              index === 0 ? 'bg-gradient-to-r from-yellow-900/30 to-orange-900/30 border-yellow-500/50' :
-                              index === 1 ? 'bg-gradient-to-r from-blue-900/30 to-cyan-900/30 border-blue-500/50' :
-                              'bg-gradient-to-r from-purple-900/30 to-pink-900/30 border-purple-500/50'
-                            }`}>
-                              {/* Posición */}
-                              <div className="absolute top-2 left-2 w-6 h-6 bg-white/20 rounded-full flex items-center justify-center">
-                                <span className="text-xs font-bold text-white">#{index + 1}</span>
-                              </div>
-                              
-                              <div className="p-4">
-                                <div className="flex items-center justify-between">
-                                  <div className="flex items-center gap-3">
-                                    <div className="text-2xl">{analysis.icon}</div>
-                                    <div className="min-w-0 flex-1">
-                                      <div className="text-base font-semibold text-white truncate" title={analysis.playerName}>
-                                        {analysis.playerName}
-                                      </div>
-                                      <div className="text-sm text-gray-300">
-                                        {analysis.team} • KDA: {analysis.kda}
-                                      </div>
-                                    </div>
-                                  </div>
-                                  <div className="text-right">
-                                    <div className={`text-xl font-bold ${analysis.color}`}>
-                                      {analysis.score}/100
-                                    </div>
-                                    <div className={`text-sm font-medium ${analysis.color}`}>
-                                      {analysis.category}
-                                    </div>
-                                  </div>
-                                </div>
-                                
-                                {/* Barra de progreso */}
-                                <div className="mt-3">
-                                  <div className="w-full bg-gray-700/50 rounded-full h-2">
-                                    <div 
-                                      className={`h-2 rounded-full transition-all duration-500 ${
-                                        analysis.score >= 80 ? 'bg-gradient-to-r from-green-500 to-green-400' :
-                                        analysis.score >= 65 ? 'bg-gradient-to-r from-blue-500 to-blue-400' :
-                                        analysis.score >= 50 ? 'bg-gradient-to-r from-yellow-500 to-yellow-400' :
-                                        analysis.score >= 35 ? 'bg-gradient-to-r from-orange-500 to-orange-400' :
-                                        'bg-gradient-to-r from-red-500 to-red-400'
-                                      }`}
-                                      style={{ width: `${analysis.score}%` }}
-                                    ></div>
-                                  </div>
-                                </div>
-                              </div>
-                            </div>
-                          ))}
-                      </div>
-                      
-                      {/* Análisis de Throw */}
-                      {throwAnalysis[match.match_id] && (
-                        <div className="mt-4 p-4 bg-gradient-to-br from-red-900/40 via-orange-900/40 to-red-900/40 rounded-xl border border-red-500/40 shadow-xl">
-                          <div className="flex items-center gap-3 mb-4">
-                            <div className="w-8 h-8 bg-gradient-to-br from-red-500 to-orange-600 rounded-lg flex items-center justify-center">
-                              <span className="text-white text-sm">🎯</span>
-                            </div>
-                            <h4 className="text-lg font-bold text-white">Análisis de Throw</h4>
-                          </div>
-                          
-                          {/* Jugadores que throwearon */}
-                          {(() => {
-                            const throws = Object.values(throwAnalysis[match.match_id]).filter(t => t.isThrow);
-                            
-                            return throws.length > 0 && (
-                              <div className="space-y-3">
-                                <div className="flex items-center gap-2 mb-3">
-                                  <div className="w-6 h-6 bg-red-500/20 rounded-full flex items-center justify-center">
-                                    <span className="text-red-400 text-sm">🚨</span>
-                                  </div>
-                                  <div className="text-base font-semibold text-red-300">
-                                    Jugadores que throwearon la partida
-                                  </div>
-                                </div>
-                                
-                                {throws.map((throwData, index) => (
-                                  <div key={index} className="relative overflow-hidden bg-gradient-to-r from-red-800/60 to-orange-800/60 rounded-xl border-2 border-red-500/50 shadow-lg">
-                                    {/* Badge de throw */}
-                                    <div className="absolute top-2 right-2 px-2 py-1 bg-red-600/80 rounded-full">
-                                      <span className="text-xs font-bold text-white">{throwData.throwPercentage}%</span>
-                                    </div>
-                                    
-                                    <div className="p-4">
-                                      <div className="flex items-center justify-between mb-3">
-                                        <div className="flex items-center gap-3">
-                                          <div className="text-3xl">{throwData.icon}</div>
-                                          <div>
-                                            <div className="text-lg font-bold text-white">
-                                              {throwData.playerName}
-                                            </div>
-                                            <div className="text-sm text-red-200">
-                                              {throwData.description}
-                                            </div>
-                                          </div>
-                                        </div>
-                                        <div className="text-right">
-                                          <div className={`text-xl font-bold ${throwData.color}`}>
-                                            {throwData.category}
-                                          </div>
-                                        </div>
-                                      </div>
-                                      
-                                      {/* Progresión temporal con Net Worth */}
-                                      <div className="bg-black/20 rounded-lg p-4 space-y-3">
-                                        {/* Progresión de Score */}
-                                        <div className="flex items-center justify-between text-sm">
-                                          <div className="text-center">
-                                            <div className="text-green-400 font-bold">Early Game</div>
-                                            <div className="text-white">{throwData.earlyScore}pts</div>
-                                            <div className="text-gray-300 text-xs">KDA: {throwData.earlyKDA}</div>
-                                          </div>
-                                          <div className="flex-1 mx-4">
-                                            <div className="w-full bg-gray-700 rounded-full h-2">
-                                              <div className="bg-gradient-to-r from-green-500 to-red-500 h-2 rounded-full"></div>
-                                            </div>
-                                            <div className="text-center text-xs text-gray-400 mt-1">Progresión de Score</div>
-                                          </div>
-                                          <div className="text-center">
-                                            <div className="text-red-400 font-bold">Late Game</div>
-                                            <div className="text-white">{throwData.lateScore}pts</div>
-                                            <div className="text-gray-300 text-xs">KDA: {throwData.lateKDA}</div>
-                                          </div>
-                                        </div>
-                                        
-                                        {/* Progresión de Net Worth */}
-                                        <div className="border-t border-gray-600 pt-3">
-                                          <div className="text-xs text-gray-400 mb-2 text-center">💰 Progresión de Net Worth</div>
-                                          <div className="flex items-center justify-between text-xs">
-                                            <div className="text-center">
-                                              <div className="text-green-400 font-bold">Early</div>
-                                              <div className="text-white">{throwData.earlyNetWorth.toLocaleString()}</div>
-                                              <div className="text-gray-300">GPM: {throwData.earlyGPM}</div>
-                                            </div>
-                                            <div className="flex-1 mx-2">
-                                              <div className="w-full bg-gray-700 rounded-full h-1.5">
-                                                <div className="bg-gradient-to-r from-green-500 via-yellow-500 to-red-500 h-1.5 rounded-full"></div>
-                                              </div>
-                                            </div>
-                                            <div className="text-center">
-                                              <div className="text-yellow-400 font-bold">Mid</div>
-                                              <div className="text-white">{throwData.midNetWorth.toLocaleString()}</div>
-                                              <div className="text-gray-300">GPM: {throwData.midGPM}</div>
-                                            </div>
-                                            <div className="flex-1 mx-2">
-                                              <div className="w-full bg-gray-700 rounded-full h-1.5">
-                                                <div className="bg-gradient-to-r from-yellow-500 to-red-500 h-1.5 rounded-full"></div>
-                                              </div>
-                                            </div>
-                                            <div className="text-center">
-                                              <div className="text-red-400 font-bold">Late</div>
-                                              <div className="text-white">{throwData.lateNetWorth.toLocaleString()}</div>
-                                              <div className="text-gray-300">GPM: {throwData.lateGPM}</div>
-                                            </div>
-                                          </div>
-                                        </div>
-                                        
-                                        {/* Progresión de XPM */}
-                                        <div className="border-t border-gray-600 pt-3">
-                                          <div className="text-xs text-gray-400 mb-2 text-center">⚡ Progresión de XPM</div>
-                                          <div className="flex items-center justify-between text-xs">
-                                            <div className="text-center">
-                                              <div className="text-blue-400 font-bold">Early</div>
-                                              <div className="text-white">{throwData.earlyXPM}</div>
-                                            </div>
-                                            <div className="flex-1 mx-2">
-                                              <div className="w-full bg-gray-700 rounded-full h-1.5">
-                                                <div className="bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 h-1.5 rounded-full"></div>
-                                              </div>
-                                            </div>
-                                            <div className="text-center">
-                                              <div className="text-purple-400 font-bold">Mid</div>
-                                              <div className="text-white">{throwData.midXPM}</div>
-                                            </div>
-                                            <div className="flex-1 mx-2">
-                                              <div className="w-full bg-gray-700 rounded-full h-1.5">
-                                                <div className="bg-gradient-to-r from-purple-500 to-pink-500 h-1.5 rounded-full"></div>
-                                              </div>
-                                            </div>
-                                            <div className="text-center">
-                                              <div className="text-pink-400 font-bold">Late</div>
-                                              <div className="text-white">{throwData.lateXPM}</div>
-                                            </div>
-                                          </div>
-                                        </div>
-                                      </div>
-                                    </div>
-                                  </div>
-                                ))}
-                              </div>
-                            );
-                          })()}
-                          
-                          {/* Jugadores consistentes y clutch */}
-                          {(() => {
-                            const consistent = Object.values(throwAnalysis[match.match_id]).filter(t => !t.isThrow && t.category === 'CONSISTENTE');
-                            const clutch = Object.values(throwAnalysis[match.match_id]).filter(t => t.category === 'CLUTCH');
-                            
-                            return (consistent.length > 0 || clutch.length > 0) && (
-                              <div className="mt-4 space-y-3">
-                                {consistent.length > 0 && (
-                                  <div className="bg-gradient-to-r from-green-800/40 to-emerald-800/40 rounded-lg p-3 border border-green-500/30">
-                                    <div className="flex items-center gap-2 mb-2">
-                                      <div className="w-5 h-5 bg-green-500/20 rounded-full flex items-center justify-center">
-                                        <span className="text-green-400 text-sm">👍</span>
-                                      </div>
-                                      <div className="text-sm font-semibold text-green-300">
-                                        Jugadores Consistentes
-                                      </div>
-                                    </div>
-                                    <div className="flex flex-wrap gap-2">
-                                      {consistent.map((player, index) => (
-                                        <div key={index} className="px-3 py-1 bg-green-600/20 rounded-full border border-green-500/30">
-                                          <span className="text-sm text-green-200">{player.playerName}</span>
-                                        </div>
-                                      ))}
-                                    </div>
-                                  </div>
-                                )}
-                                
-                                {clutch.length > 0 && (
-                                  <div className="bg-gradient-to-r from-blue-800/40 to-cyan-800/40 rounded-lg p-3 border border-blue-500/30">
-                                    <div className="flex items-center gap-2 mb-2">
-                                      <div className="w-5 h-5 bg-blue-500/20 rounded-full flex items-center justify-center">
-                                        <span className="text-blue-400 text-sm">🔥</span>
-                                      </div>
-                                      <div className="text-sm font-semibold text-blue-300">
-                                        Jugadores Clutch
-                                      </div>
-                                    </div>
-                                    <div className="flex flex-wrap gap-2">
-                                      {clutch.map((player, index) => (
-                                        <div key={index} className="px-3 py-1 bg-blue-600/20 rounded-full border border-blue-500/30">
-                                          <span className="text-sm text-blue-200">{player.playerName}</span>
-                                        </div>
-                                      ))}
-                                    </div>
-                                  </div>
-                                )}
-                              </div>
-                            );
-                          })()}
-                        </div>
-                      )}
-                      
-                      {/* Identificar jugadores con bajo rendimiento */}
-                      {(() => {
-                        const performances = Object.values(playerPerformanceAnalysis[match.match_id]);
-                        const poorPerformers = performances.filter(p => p.score < 30);
-                        
-                        return poorPerformers.length > 0 && (
-                          <div className="mt-4 p-4 bg-gradient-to-r from-red-800/40 to-pink-800/40 rounded-xl border border-red-500/40 shadow-lg">
-                            <div className="flex items-center gap-2 mb-3">
-                              <div className="w-6 h-6 bg-red-500/20 rounded-full flex items-center justify-center">
-                                <span className="text-red-400 text-sm">⚠️</span>
-                              </div>
-                              <div className="text-base font-semibold text-red-300">
-                                Jugadores con Bajo Rendimiento
-                              </div>
-                            </div>
-                            <div className="grid grid-cols-1 gap-2">
-                              {poorPerformers.map((player, index) => (
-                                <div key={index} className="flex items-center justify-between bg-red-700/30 rounded-lg p-3 border border-red-500/30">
-                                  <div className="flex items-center gap-3">
-                                    <div className="text-2xl">{player.icon}</div>
-                                    <div>
-                                      <div className="text-sm font-medium text-white">
-                                        {player.playerName}
-                                      </div>
-                                      <div className="text-xs text-red-200">
-                                        {player.team} • KDA: {player.kda}
-                                      </div>
-                                    </div>
-                                  </div>
-                                  <div className="text-right">
-                                    <div className={`text-sm font-bold ${player.color}`}>
-                                      {player.score}/100
-                                    </div>
-                                    <div className="text-xs text-gray-400">
-                                      {player.category}
-                                    </div>
-                                  </div>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        );
-                      })()}
-                    </div>
-                  )}
                   <div>
                     <div className="flex items-center space-x-2">
                       <span className={`px-3 py-1 rounded-full text-xs font-semibold shadow-sm ${
@@ -3953,6 +3646,269 @@ export default function DotaMatchesFixed() {
                   </div>
                 </div>
               </div>
+
+              {/* Análisis de rendimiento y throw */}
+              {playerPerformanceAnalysis[selectedMatch.match_id] && (
+                <div className="bg-gradient-to-br from-slate-800/40 via-slate-900/40 to-slate-800/40 rounded-xl border border-slate-600/30 shadow-xl p-6 mb-6">
+                  <div className="flex items-center gap-3 mb-6">
+                    <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
+                      <span className="text-white text-lg">📊</span>
+                    </div>
+                    <h3 className="text-xl font-bold text-white">Análisis de Rendimiento</h3>
+                  </div>
+                  
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    {/* Top 3 jugadores */}
+                    <div className="space-y-4">
+                      <h4 className="text-lg font-semibold text-white mb-4">🏆 Top 3 Jugadores</h4>
+                      {Object.entries(playerPerformanceAnalysis[selectedMatch.match_id])
+                        .sort(([,a], [,b]) => b.score - a.score)
+                        .slice(0, 3)
+                        .map(([accountId, analysis], index) => (
+                          <div key={accountId} className={`relative overflow-hidden rounded-xl border-2 transition-all duration-200 hover:scale-[1.02] ${
+                            index === 0 ? 'bg-gradient-to-r from-yellow-900/30 to-orange-900/30 border-yellow-500/50' :
+                            index === 1 ? 'bg-gradient-to-r from-blue-900/30 to-cyan-900/30 border-blue-500/50' :
+                            'bg-gradient-to-r from-purple-900/30 to-pink-900/30 border-purple-500/50'
+                          }`}>
+                            {/* Posición */}
+                            <div className="absolute top-3 left-3 w-8 h-8 bg-white/20 rounded-full flex items-center justify-center">
+                              <span className="text-sm font-bold text-white">#{index + 1}</span>
+                            </div>
+                            
+                            <div className="p-5">
+                              <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-4">
+                                  <div className="text-3xl">{analysis.icon}</div>
+                                  <div className="min-w-0 flex-1">
+                                    <div className="text-lg font-semibold text-white truncate" title={analysis.playerName}>
+                                      {analysis.playerName}
+                                    </div>
+                                    <div className="text-sm text-gray-300">
+                                      {analysis.team} • KDA: {analysis.kda}
+                                    </div>
+                                  </div>
+                                </div>
+                                <div className="text-right">
+                                  <div className={`text-2xl font-bold ${analysis.color}`}>
+                                    {analysis.score}/100
+                                  </div>
+                                  <div className={`text-sm font-medium ${analysis.color}`}>
+                                    {analysis.category}
+                                  </div>
+                                </div>
+                              </div>
+                              
+                              {/* Barra de progreso */}
+                              <div className="mt-4">
+                                <div className="w-full bg-gray-700/50 rounded-full h-3">
+                                  <div 
+                                    className={`h-3 rounded-full transition-all duration-500 ${
+                                      analysis.score >= 80 ? 'bg-gradient-to-r from-green-500 to-green-400' :
+                                      analysis.score >= 65 ? 'bg-gradient-to-r from-blue-500 to-blue-400' :
+                                      analysis.score >= 50 ? 'bg-gradient-to-r from-yellow-500 to-yellow-400' :
+                                      analysis.score >= 35 ? 'bg-gradient-to-r from-orange-500 to-orange-400' :
+                                      'bg-gradient-to-r from-red-500 to-red-400'
+                                    }`}
+                                    style={{ width: `${analysis.score}%` }}
+                                  ></div>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                    </div>
+
+                    {/* Análisis de Throw */}
+                    {throwAnalysis[selectedMatch.match_id] && (
+                      <div className="space-y-4">
+                        <h4 className="text-lg font-semibold text-white mb-4">🎯 Análisis de Throw</h4>
+                        
+                        {/* Jugadores que throwearon */}
+                        {(() => {
+                          const throws = Object.values(throwAnalysis[selectedMatch.match_id]).filter(t => t.isThrow);
+                          
+                          return throws.length > 0 && (
+                            <div className="space-y-4">
+                              <div className="flex items-center gap-2 mb-4">
+                                <div className="w-6 h-6 bg-red-500/20 rounded-full flex items-center justify-center">
+                                  <span className="text-red-400 text-sm">🚨</span>
+                                </div>
+                                <div className="text-base font-semibold text-red-300">
+                                  Jugadores que throwearon
+                                </div>
+                              </div>
+                              
+                              {throws.map((throwData, index) => (
+                                <div key={index} className="relative overflow-hidden bg-gradient-to-r from-red-800/60 to-orange-800/60 rounded-xl border-2 border-red-500/50 shadow-lg">
+                                  {/* Badge de throw */}
+                                  <div className="absolute top-3 right-3 px-3 py-1 bg-red-600/80 rounded-full">
+                                    <span className="text-sm font-bold text-white">{throwData.throwPercentage}%</span>
+                                  </div>
+                                  
+                                  <div className="p-5">
+                                    <div className="flex items-center justify-between mb-4">
+                                      <div className="flex items-center gap-3">
+                                        <div className="text-3xl">{throwData.icon}</div>
+                                        <div>
+                                          <div className="text-lg font-bold text-white">
+                                            {throwData.playerName}
+                                          </div>
+                                          <div className="text-sm text-red-200">
+                                            {throwData.description}
+                                          </div>
+                                        </div>
+                                      </div>
+                                      <div className="text-right">
+                                        <div className={`text-lg font-bold ${throwData.color}`}>
+                                          {throwData.category}
+                                        </div>
+                                      </div>
+                                    </div>
+                                    
+                                    {/* Progresión temporal con Net Worth */}
+                                    <div className="bg-black/20 rounded-lg p-4 space-y-4">
+                                      {/* Progresión de Score */}
+                                      <div className="flex items-center justify-between text-sm">
+                                        <div className="text-center">
+                                          <div className="text-green-400 font-bold">Early Game</div>
+                                          <div className="text-white text-lg">{throwData.earlyScore}pts</div>
+                                          <div className="text-gray-300 text-xs">KDA: {throwData.earlyKDA}</div>
+                                        </div>
+                                        <div className="flex-1 mx-4">
+                                          <div className="w-full bg-gray-700 rounded-full h-2">
+                                            <div className="bg-gradient-to-r from-green-500 to-red-500 h-2 rounded-full"></div>
+                                          </div>
+                                          <div className="text-center text-xs text-gray-400 mt-1">Progresión de Score</div>
+                                        </div>
+                                        <div className="text-center">
+                                          <div className="text-red-400 font-bold">Late Game</div>
+                                          <div className="text-white text-lg">{throwData.lateScore}pts</div>
+                                          <div className="text-gray-300 text-xs">KDA: {throwData.lateKDA}</div>
+                                        </div>
+                                      </div>
+                                      
+                                      {/* Progresión de Net Worth */}
+                                      <div className="border-t border-gray-600 pt-4">
+                                        <div className="text-sm text-gray-400 mb-3 text-center">💰 Progresión de Net Worth</div>
+                                        <div className="flex items-center justify-between text-sm">
+                                          <div className="text-center">
+                                            <div className="text-green-400 font-bold">Early</div>
+                                            <div className="text-white text-lg">{throwData.earlyNetWorth.toLocaleString()}</div>
+                                            <div className="text-gray-300 text-xs">GPM: {throwData.earlyGPM}</div>
+                                          </div>
+                                          <div className="flex-1 mx-3">
+                                            <div className="w-full bg-gray-700 rounded-full h-2">
+                                              <div className="bg-gradient-to-r from-green-500 via-yellow-500 to-red-500 h-2 rounded-full"></div>
+                                            </div>
+                                          </div>
+                                          <div className="text-center">
+                                            <div className="text-yellow-400 font-bold">Mid</div>
+                                            <div className="text-white text-lg">{throwData.midNetWorth.toLocaleString()}</div>
+                                            <div className="text-gray-300 text-xs">GPM: {throwData.midGPM}</div>
+                                          </div>
+                                          <div className="flex-1 mx-3">
+                                            <div className="w-full bg-gray-700 rounded-full h-2">
+                                              <div className="bg-gradient-to-r from-yellow-500 to-red-500 h-2 rounded-full"></div>
+                                            </div>
+                                          </div>
+                                          <div className="text-center">
+                                            <div className="text-red-400 font-bold">Late</div>
+                                            <div className="text-white text-lg">{throwData.lateNetWorth.toLocaleString()}</div>
+                                            <div className="text-gray-300 text-xs">GPM: {throwData.lateGPM}</div>
+                                          </div>
+                                        </div>
+                                      </div>
+                                      
+                                      {/* Progresión de XPM */}
+                                      <div className="border-t border-gray-600 pt-4">
+                                        <div className="text-sm text-gray-400 mb-3 text-center">⚡ Progresión de XPM</div>
+                                        <div className="flex items-center justify-between text-sm">
+                                          <div className="text-center">
+                                            <div className="text-blue-400 font-bold">Early</div>
+                                            <div className="text-white text-lg">{throwData.earlyXPM}</div>
+                                          </div>
+                                          <div className="flex-1 mx-3">
+                                            <div className="w-full bg-gray-700 rounded-full h-2">
+                                              <div className="bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 h-2 rounded-full"></div>
+                                            </div>
+                                          </div>
+                                          <div className="text-center">
+                                            <div className="text-purple-400 font-bold">Mid</div>
+                                            <div className="text-white text-lg">{throwData.midXPM}</div>
+                                          </div>
+                                          <div className="flex-1 mx-3">
+                                            <div className="w-full bg-gray-700 rounded-full h-2">
+                                              <div className="bg-gradient-to-r from-purple-500 to-pink-500 h-2 rounded-full"></div>
+                                            </div>
+                                          </div>
+                                          <div className="text-center">
+                                            <div className="text-pink-400 font-bold">Late</div>
+                                            <div className="text-white text-lg">{throwData.lateXPM}</div>
+                                          </div>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          );
+                        })()}
+                        
+                        {/* Jugadores consistentes y clutch */}
+                        {(() => {
+                          const consistent = Object.values(throwAnalysis[selectedMatch.match_id]).filter(t => !t.isThrow && t.category === 'CONSISTENTE');
+                          const clutch = Object.values(throwAnalysis[selectedMatch.match_id]).filter(t => t.category === 'CLUTCH');
+                          
+                          return (consistent.length > 0 || clutch.length > 0) && (
+                            <div className="mt-4 space-y-3">
+                              {consistent.length > 0 && (
+                                <div className="bg-gradient-to-r from-green-800/40 to-emerald-800/40 rounded-lg p-4 border border-green-500/30">
+                                  <div className="flex items-center gap-2 mb-3">
+                                    <div className="w-6 h-6 bg-green-500/20 rounded-full flex items-center justify-center">
+                                      <span className="text-green-400 text-sm">👍</span>
+                                    </div>
+                                    <div className="text-base font-semibold text-green-300">
+                                      Jugadores Consistentes
+                                    </div>
+                                  </div>
+                                  <div className="flex flex-wrap gap-2">
+                                    {consistent.map((player, index) => (
+                                      <div key={index} className="px-3 py-1 bg-green-600/20 rounded-full border border-green-500/30">
+                                        <span className="text-sm text-green-200">{player.playerName}</span>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+                              
+                              {clutch.length > 0 && (
+                                <div className="bg-gradient-to-r from-blue-800/40 to-cyan-800/40 rounded-lg p-4 border border-blue-500/30">
+                                  <div className="flex items-center gap-2 mb-3">
+                                    <div className="w-6 h-6 bg-blue-500/20 rounded-full flex items-center justify-center">
+                                      <span className="text-blue-400 text-sm">🔥</span>
+                                    </div>
+                                    <div className="text-base font-semibold text-blue-300">
+                                      Jugadores Clutch
+                                    </div>
+                                  </div>
+                                  <div className="flex flex-wrap gap-2">
+                                    {clutch.map((player, index) => (
+                                      <div key={index} className="px-3 py-1 bg-blue-600/20 rounded-full border border-blue-500/30">
+                                        <span className="text-sm text-blue-200">{player.playerName}</span>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })()}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
 
               {/* Botones de acción */}
               <div className="flex flex-col gap-3">
