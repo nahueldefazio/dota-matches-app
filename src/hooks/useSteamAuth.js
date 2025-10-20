@@ -8,6 +8,9 @@ import { useAuth } from '../contexts/AuthContext';
 export const useSteamAuth = () => {
   const authContext = useAuth();
   const { user, loading, error, friends, loadingFriends, isAuthenticated, login, logout, setFriends, setLoading, setError, setLoadingFriends } = authContext;
+  
+  // Flag para evitar múltiples callbacks
+  const [callbackProcessed, setCallbackProcessed] = useState(false);
 
   /**
    * Inicia el proceso de autenticación con Steam
@@ -46,7 +49,14 @@ export const useSteamAuth = () => {
    * Esta función debe ser llamada cuando el usuario regresa de Steam
    */
   const handleSteamCallback = useCallback(async () => {
+    // Evitar múltiples llamadas simultáneas o ya procesado
+    if (loading || callbackProcessed) {
+      console.log('⚠️ Callback ya procesado o en progreso, ignorando...');
+      return null;
+    }
+
     try {
+      setCallbackProcessed(true);
       setLoading(true);
       setError(null);
 
@@ -64,6 +74,7 @@ export const useSteamAuth = () => {
       }
 
       const steamId = steamIdMatch[1];
+      console.log('🔍 Procesando callback de Steam para ID:', steamId);
       
       // Obtener datos reales del perfil de Steam usando proxy
       console.log('🔍 Obteniendo perfil real de Steam...');
@@ -76,7 +87,10 @@ export const useSteamAuth = () => {
         // Usar proxy para evitar CORS
         const proxyUrl = 'https://api.allorigins.win/raw?url=';
         const steamUrl = `https://api.steampowered.com/ISteamUser/GetPlayerSummaries/v0002/?key=${steamApiKey}&steamids=${steamId}`;
-        const profileResponse = await fetch(proxyUrl + encodeURIComponent(steamUrl));
+        const fullUrl = proxyUrl + encodeURIComponent(steamUrl);
+        
+        console.log('🌐 Haciendo petición a Steam API:', fullUrl);
+        const profileResponse = await fetch(fullUrl);
         
         if (profileResponse.ok) {
           const profileData = await profileResponse.json();
