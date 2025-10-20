@@ -2491,8 +2491,8 @@ export default function DotaMatchesFixed() {
       )}
 
       {/* Partidas cargadas - Solo mostrar cuando el análisis esté completo */}
+      <div className="relative z-10 max-w-8xl mx-auto px-4 sm:px-6 lg:px-8">
       {matches.length > 0 && companionsAnalysisComplete && (
-        <div className="relative z-10 max-w-8xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="bg-white p-4 rounded-lg shadow-md">
             <h2 className="text-lg font-semibold mb-3">
               Partidas cargadas: {matches.length} (Filtro: {timeFilter})
@@ -3618,6 +3618,7 @@ export default function DotaMatchesFixed() {
           </div>
         </div>
       )}
+      </div>
 
       {/* Popup de información del usuario */}
       {showUserPopup && authenticatedUser && (
