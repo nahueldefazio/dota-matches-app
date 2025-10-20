@@ -28,6 +28,7 @@ export default function DotaMatchesFixed() {
   const [showUserPopup, setShowUserPopup] = useState(false);
   const [showErrorPopup, setShowErrorPopup] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
+  const [playerPerformanceAnalysis, setPlayerPerformanceAnalysis] = useState({});
   const [matchStats, setMatchStats] = useState({ solo: { wins: 0, losses: 0 }, party: { wins: 0, losses: 0 } });
   const [statsReady, setStatsReady] = useState(false);
   const [friendsNote, setFriendsNote] = useState('');
@@ -532,6 +533,126 @@ export default function DotaMatchesFixed() {
     return stats;
   };
 
+  // Función para analizar el rendimiento de un jugador en una partida
+  const analyzePlayerPerformance = (player) => {
+    if (!player) return null;
+    
+    const kda = (player.kills + player.assists) / Math.max(player.deaths, 1);
+    const gpm = player.gold_per_min || 0;
+    const xpm = player.xp_per_min || 0;
+    const lastHits = player.last_hits || 0;
+    const denies = player.denies || 0;
+    const heroDamage = player.hero_damage || 0;
+    const towerDamage = player.tower_damage || 0;
+    const healing = player.hero_healing || 0;
+    
+    // Calcular score de rendimiento (0-100)
+    let performanceScore = 0;
+    
+    // KDA (30% del score)
+    if (kda >= 3) performanceScore += 30;
+    else if (kda >= 2) performanceScore += 25;
+    else if (kda >= 1.5) performanceScore += 20;
+    else if (kda >= 1) performanceScore += 15;
+    else if (kda >= 0.5) performanceScore += 10;
+    else performanceScore += 5;
+    
+    // GPM (20% del score)
+    if (gpm >= 600) performanceScore += 20;
+    else if (gpm >= 500) performanceScore += 18;
+    else if (gpm >= 400) performanceScore += 15;
+    else if (gpm >= 300) performanceScore += 12;
+    else if (gpm >= 200) performanceScore += 8;
+    else performanceScore += 5;
+    
+    // XPM (15% del score)
+    if (xpm >= 600) performanceScore += 15;
+    else if (xpm >= 500) performanceScore += 12;
+    else if (xpm >= 400) performanceScore += 10;
+    else if (xpm >= 300) performanceScore += 8;
+    else if (xpm >= 200) performanceScore += 5;
+    else performanceScore += 3;
+    
+    // Last Hits (10% del score)
+    const lhPerMin = lastHits / Math.max(player.duration / 60, 1);
+    if (lhPerMin >= 6) performanceScore += 10;
+    else if (lhPerMin >= 5) performanceScore += 8;
+    else if (lhPerMin >= 4) performanceScore += 6;
+    else if (lhPerMin >= 3) performanceScore += 4;
+    else if (lhPerMin >= 2) performanceScore += 2;
+    else performanceScore += 1;
+    
+    // Hero Damage (15% del score)
+    const damagePerMin = heroDamage / Math.max(player.duration / 60, 1);
+    if (damagePerMin >= 1000) performanceScore += 15;
+    else if (damagePerMin >= 800) performanceScore += 12;
+    else if (damagePerMin >= 600) performanceScore += 10;
+    else if (damagePerMin >= 400) performanceScore += 8;
+    else if (damagePerMin >= 200) performanceScore += 5;
+    else performanceScore += 3;
+    
+    // Tower Damage (5% del score)
+    const towerDamagePerMin = towerDamage / Math.max(player.duration / 60, 1);
+    if (towerDamagePerMin >= 500) performanceScore += 5;
+    else if (towerDamagePerMin >= 300) performanceScore += 4;
+    else if (towerDamagePerMin >= 200) performanceScore += 3;
+    else if (towerDamagePerMin >= 100) performanceScore += 2;
+    else performanceScore += 1;
+    
+    // Healing (5% del score)
+    const healingPerMin = healing / Math.max(player.duration / 60, 1);
+    if (healingPerMin >= 200) performanceScore += 5;
+    else if (healingPerMin >= 150) performanceScore += 4;
+    else if (healingPerMin >= 100) performanceScore += 3;
+    else if (healingPerMin >= 50) performanceScore += 2;
+    else performanceScore += 1;
+    
+    // Determinar categoría de rendimiento
+    let performanceCategory = '';
+    let performanceColor = '';
+    let performanceIcon = '';
+    
+    if (performanceScore >= 80) {
+      performanceCategory = 'Excelente';
+      performanceColor = 'text-green-600';
+      performanceIcon = '🔥';
+    } else if (performanceScore >= 65) {
+      performanceCategory = 'Muy Bueno';
+      performanceColor = 'text-green-500';
+      performanceIcon = '⭐';
+    } else if (performanceScore >= 50) {
+      performanceCategory = 'Bueno';
+      performanceColor = 'text-blue-500';
+      performanceIcon = '👍';
+    } else if (performanceScore >= 35) {
+      performanceCategory = 'Regular';
+      performanceColor = 'text-yellow-500';
+      performanceIcon = '😐';
+    } else if (performanceScore >= 20) {
+      performanceCategory = 'Malo';
+      performanceColor = 'text-orange-500';
+      performanceIcon = '😞';
+    } else {
+      performanceCategory = 'Muy Malo';
+      performanceColor = 'text-red-500';
+      performanceIcon = '💀';
+    }
+    
+    return {
+      score: Math.round(performanceScore),
+      category: performanceCategory,
+      color: performanceColor,
+      icon: performanceIcon,
+      kda: kda.toFixed(2),
+      gpm,
+      xpm,
+      lastHits,
+      heroDamage,
+      towerDamage,
+      healing
+    };
+  };
+
   // Función para verificar si hay amigos en una partida
   const checkFriendsInMatch = async (match) => {
     if (!friends || friends.length === 0) {
@@ -555,6 +676,27 @@ export default function DotaMatchesFixed() {
       }
       
       console.log(`✅ Datos de partida ${match.match_id} obtenidos, ${matchDetails.players.length} jugadores`);
+      
+      // Analizar rendimiento de todos los jugadores
+      const performanceAnalysis = {};
+      matchDetails.players.forEach(player => {
+        const analysis = analyzePlayerPerformance(player);
+        if (analysis) {
+          performanceAnalysis[player.account_id] = {
+            ...analysis,
+            playerName: player.personaname || 'Jugador Anónimo',
+            heroId: player.hero_id,
+            isRadiant: player.is_radiant,
+            team: player.is_radiant ? 'Radiant' : 'Dire'
+          };
+        }
+      });
+      
+      // Guardar análisis de rendimiento
+      setPlayerPerformanceAnalysis(prev => ({
+        ...prev,
+        [match.match_id]: performanceAnalysis
+      }));
     
     const friendsFound = [];
     
@@ -2296,6 +2438,61 @@ export default function DotaMatchesFixed() {
                     <span className="font-medium text-orange-300">Duración:</span>
                     <span className="ml-1 text-white">{Math.floor(match.duration / 60)} min</span>
                   </div>
+                  
+                  {/* Análisis de rendimiento */}
+                  {playerPerformanceAnalysis[match.match_id] && (
+                    <div className="mt-3 p-3 bg-gradient-to-r from-blue-900/30 to-purple-900/30 rounded-lg border border-blue-400/30">
+                      <h4 className="text-sm font-semibold text-blue-300 mb-2 flex items-center gap-2">
+                        <span>📊</span>
+                        <span>Análisis de Rendimiento</span>
+                      </h4>
+                      <div className="grid grid-cols-1 gap-2">
+                        {Object.entries(playerPerformanceAnalysis[match.match_id])
+                          .sort(([,a], [,b]) => b.score - a.score)
+                          .slice(0, 3)
+                          .map(([accountId, analysis]) => (
+                            <div key={accountId} className="flex items-center justify-between bg-slate-800/50 rounded-lg p-2 border border-slate-600/50">
+                              <div className="flex items-center gap-2">
+                                <span className="text-lg">{analysis.icon}</span>
+                                <div>
+                                  <div className="text-sm font-medium text-white truncate max-w-[120px]" title={analysis.playerName}>
+                                    {analysis.playerName}
+                                  </div>
+                                  <div className="text-xs text-gray-400">
+                                    {analysis.team} • KDA: {analysis.kda}
+                                  </div>
+                                </div>
+                              </div>
+                              <div className="text-right">
+                                <div className={`text-sm font-bold ${analysis.color}`}>
+                                  {analysis.score}/100
+                                </div>
+                                <div className="text-xs text-gray-400">
+                                  {analysis.category}
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                      </div>
+                      
+                      {/* Identificar jugadores con bajo rendimiento */}
+                      {(() => {
+                        const performances = Object.values(playerPerformanceAnalysis[match.match_id]);
+                        const poorPerformers = performances.filter(p => p.score < 30);
+                        
+                        return poorPerformers.length > 0 && (
+                          <div className="mt-2 p-2 bg-red-900/30 rounded border border-red-500/30">
+                            <div className="text-xs text-red-300 font-medium mb-1">
+                              ⚠️ Jugadores con bajo rendimiento:
+                            </div>
+                            <div className="text-xs text-red-200">
+                              {poorPerformers.map(p => p.playerName).join(', ')}
+                            </div>
+                          </div>
+                        );
+                      })()}
+                    </div>
+                  )}
                   <div>
                     <div className="flex items-center space-x-2">
                       <span className={`px-3 py-1 rounded-full text-xs font-semibold shadow-sm ${
