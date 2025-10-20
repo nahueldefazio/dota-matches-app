@@ -2575,34 +2575,66 @@ export default function DotaMatchesFixed() {
                   
                   {/* Análisis de rendimiento */}
                   {playerPerformanceAnalysis[match.match_id] && (
-                    <div className="mt-3 p-3 bg-gradient-to-r from-blue-900/30 to-purple-900/30 rounded-lg border border-blue-400/30">
-                      <h4 className="text-sm font-semibold text-blue-300 mb-2 flex items-center gap-2">
-                        <span>📊</span>
-                        <span>Análisis de Rendimiento</span>
-                      </h4>
-                      <div className="grid grid-cols-1 gap-2">
+                    <div className="mt-3 p-4 bg-gradient-to-br from-slate-800/40 via-slate-900/40 to-slate-800/40 rounded-xl border border-slate-600/30 shadow-xl">
+                      <div className="flex items-center gap-3 mb-4">
+                        <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
+                          <span className="text-white text-sm">📊</span>
+                        </div>
+                        <h4 className="text-lg font-bold text-white">Análisis de Rendimiento</h4>
+                      </div>
+                      
+                      <div className="grid grid-cols-1 gap-3">
                         {Object.entries(playerPerformanceAnalysis[match.match_id])
                           .sort(([,a], [,b]) => b.score - a.score)
                           .slice(0, 3)
-                          .map(([accountId, analysis]) => (
-                            <div key={accountId} className="flex items-center justify-between bg-slate-800/50 rounded-lg p-2 border border-slate-600/50">
-                              <div className="flex items-center gap-2">
-                                <span className="text-lg">{analysis.icon}</span>
-                                <div>
-                                  <div className="text-sm font-medium text-white truncate max-w-[120px]" title={analysis.playerName}>
-                                    {analysis.playerName}
-                                  </div>
-                                  <div className="text-xs text-gray-400">
-                                    {analysis.team} • KDA: {analysis.kda}
-                                  </div>
-                                </div>
+                          .map(([accountId, analysis], index) => (
+                            <div key={accountId} className={`relative overflow-hidden rounded-xl border-2 transition-all duration-200 hover:scale-[1.02] ${
+                              index === 0 ? 'bg-gradient-to-r from-yellow-900/30 to-orange-900/30 border-yellow-500/50' :
+                              index === 1 ? 'bg-gradient-to-r from-blue-900/30 to-cyan-900/30 border-blue-500/50' :
+                              'bg-gradient-to-r from-purple-900/30 to-pink-900/30 border-purple-500/50'
+                            }`}>
+                              {/* Posición */}
+                              <div className="absolute top-2 left-2 w-6 h-6 bg-white/20 rounded-full flex items-center justify-center">
+                                <span className="text-xs font-bold text-white">#{index + 1}</span>
                               </div>
-                              <div className="text-right">
-                                <div className={`text-sm font-bold ${analysis.color}`}>
-                                  {analysis.score}/100
+                              
+                              <div className="p-4">
+                                <div className="flex items-center justify-between">
+                                  <div className="flex items-center gap-3">
+                                    <div className="text-2xl">{analysis.icon}</div>
+                                    <div className="min-w-0 flex-1">
+                                      <div className="text-base font-semibold text-white truncate" title={analysis.playerName}>
+                                        {analysis.playerName}
+                                      </div>
+                                      <div className="text-sm text-gray-300">
+                                        {analysis.team} • KDA: {analysis.kda}
+                                      </div>
+                                    </div>
+                                  </div>
+                                  <div className="text-right">
+                                    <div className={`text-xl font-bold ${analysis.color}`}>
+                                      {analysis.score}/100
+                                    </div>
+                                    <div className={`text-sm font-medium ${analysis.color}`}>
+                                      {analysis.category}
+                                    </div>
+                                  </div>
                                 </div>
-                                <div className="text-xs text-gray-400">
-                                  {analysis.category}
+                                
+                                {/* Barra de progreso */}
+                                <div className="mt-3">
+                                  <div className="w-full bg-gray-700/50 rounded-full h-2">
+                                    <div 
+                                      className={`h-2 rounded-full transition-all duration-500 ${
+                                        analysis.score >= 80 ? 'bg-gradient-to-r from-green-500 to-green-400' :
+                                        analysis.score >= 65 ? 'bg-gradient-to-r from-blue-500 to-blue-400' :
+                                        analysis.score >= 50 ? 'bg-gradient-to-r from-yellow-500 to-yellow-400' :
+                                        analysis.score >= 35 ? 'bg-gradient-to-r from-orange-500 to-orange-400' :
+                                        'bg-gradient-to-r from-red-500 to-red-400'
+                                      }`}
+                                      style={{ width: `${analysis.score}%` }}
+                                    ></div>
+                                  </div>
                                 </div>
                               </div>
                             </div>
@@ -2611,47 +2643,77 @@ export default function DotaMatchesFixed() {
                       
                       {/* Análisis de Throw */}
                       {throwAnalysis[match.match_id] && (
-                        <div className="mt-3 p-3 bg-gradient-to-r from-red-900/30 to-orange-900/30 rounded-lg border border-red-400/30">
-                          <h4 className="text-sm font-semibold text-red-300 mb-2 flex items-center gap-2">
-                            <span>🎯</span>
-                            <span>Análisis de Throw</span>
-                          </h4>
+                        <div className="mt-4 p-4 bg-gradient-to-br from-red-900/40 via-orange-900/40 to-red-900/40 rounded-xl border border-red-500/40 shadow-xl">
+                          <div className="flex items-center gap-3 mb-4">
+                            <div className="w-8 h-8 bg-gradient-to-br from-red-500 to-orange-600 rounded-lg flex items-center justify-center">
+                              <span className="text-white text-sm">🎯</span>
+                            </div>
+                            <h4 className="text-lg font-bold text-white">Análisis de Throw</h4>
+                          </div>
                           
                           {/* Jugadores que throwearon */}
                           {(() => {
                             const throws = Object.values(throwAnalysis[match.match_id]).filter(t => t.isThrow);
                             
                             return throws.length > 0 && (
-                              <div className="space-y-2">
-                                <div className="text-xs text-red-300 font-medium mb-2">
-                                  🚨 Jugadores que throwearon la partida:
+                              <div className="space-y-3">
+                                <div className="flex items-center gap-2 mb-3">
+                                  <div className="w-6 h-6 bg-red-500/20 rounded-full flex items-center justify-center">
+                                    <span className="text-red-400 text-sm">🚨</span>
+                                  </div>
+                                  <div className="text-base font-semibold text-red-300">
+                                    Jugadores que throwearon la partida
+                                  </div>
                                 </div>
+                                
                                 {throws.map((throwData, index) => (
-                                  <div key={index} className="bg-red-800/50 rounded-lg p-2 border border-red-600/50">
-                                    <div className="flex items-center justify-between">
-                                      <div className="flex items-center gap-2">
-                                        <span className="text-lg">{throwData.icon}</span>
-                                        <div>
-                                          <div className="text-sm font-medium text-white">
-                                            {throwData.playerName}
-                                          </div>
-                                          <div className="text-xs text-red-200">
-                                            {throwData.description}
-                                          </div>
-                                        </div>
-                                      </div>
-                                      <div className="text-right">
-                                        <div className={`text-sm font-bold ${throwData.color}`}>
-                                          {throwData.category}
-                                        </div>
-                                        <div className="text-xs text-gray-400">
-                                          {throwData.throwPercentage}% throw
-                                        </div>
-                                      </div>
+                                  <div key={index} className="relative overflow-hidden bg-gradient-to-r from-red-800/60 to-orange-800/60 rounded-xl border-2 border-red-500/50 shadow-lg">
+                                    {/* Badge de throw */}
+                                    <div className="absolute top-2 right-2 px-2 py-1 bg-red-600/80 rounded-full">
+                                      <span className="text-xs font-bold text-white">{throwData.throwPercentage}%</span>
                                     </div>
-                                    <div className="mt-1 text-xs text-gray-300">
-                                      Early: {throwData.earlyScore}pts ({throwData.earlyKDA} KDA) → 
-                                      Late: {throwData.lateScore}pts ({throwData.lateKDA} KDA)
+                                    
+                                    <div className="p-4">
+                                      <div className="flex items-center justify-between mb-3">
+                                        <div className="flex items-center gap-3">
+                                          <div className="text-3xl">{throwData.icon}</div>
+                                          <div>
+                                            <div className="text-lg font-bold text-white">
+                                              {throwData.playerName}
+                                            </div>
+                                            <div className="text-sm text-red-200">
+                                              {throwData.description}
+                                            </div>
+                                          </div>
+                                        </div>
+                                        <div className="text-right">
+                                          <div className={`text-xl font-bold ${throwData.color}`}>
+                                            {throwData.category}
+                                          </div>
+                                        </div>
+                                      </div>
+                                      
+                                      {/* Progresión temporal */}
+                                      <div className="bg-black/20 rounded-lg p-3">
+                                        <div className="flex items-center justify-between text-sm">
+                                          <div className="text-center">
+                                            <div className="text-green-400 font-bold">Early Game</div>
+                                            <div className="text-white">{throwData.earlyScore}pts</div>
+                                            <div className="text-gray-300 text-xs">KDA: {throwData.earlyKDA}</div>
+                                          </div>
+                                          <div className="flex-1 mx-4">
+                                            <div className="w-full bg-gray-700 rounded-full h-2">
+                                              <div className="bg-gradient-to-r from-green-500 to-red-500 h-2 rounded-full"></div>
+                                            </div>
+                                            <div className="text-center text-xs text-gray-400 mt-1">Progresión</div>
+                                          </div>
+                                          <div className="text-center">
+                                            <div className="text-red-400 font-bold">Late Game</div>
+                                            <div className="text-white">{throwData.lateScore}pts</div>
+                                            <div className="text-gray-300 text-xs">KDA: {throwData.lateKDA}</div>
+                                          </div>
+                                        </div>
+                                      </div>
                                     </div>
                                   </div>
                                 ))}
@@ -2659,34 +2721,52 @@ export default function DotaMatchesFixed() {
                             );
                           })()}
                           
-                          {/* Jugadores consistentes */}
+                          {/* Jugadores consistentes y clutch */}
                           {(() => {
                             const consistent = Object.values(throwAnalysis[match.match_id]).filter(t => !t.isThrow && t.category === 'CONSISTENTE');
-                            
-                            return consistent.length > 0 && (
-                              <div className="mt-2">
-                                <div className="text-xs text-green-300 font-medium mb-1">
-                                  👍 Jugadores consistentes:
-                                </div>
-                                <div className="text-xs text-green-200">
-                                  {consistent.map(p => p.playerName).join(', ')}
-                                </div>
-                              </div>
-                            );
-                          })()}
-                          
-                          {/* Jugadores clutch */}
-                          {(() => {
                             const clutch = Object.values(throwAnalysis[match.match_id]).filter(t => t.category === 'CLUTCH');
                             
-                            return clutch.length > 0 && (
-                              <div className="mt-2">
-                                <div className="text-xs text-blue-300 font-medium mb-1">
-                                  🔥 Jugadores clutch:
-                                </div>
-                                <div className="text-xs text-blue-200">
-                                  {clutch.map(p => p.playerName).join(', ')}
-                                </div>
+                            return (consistent.length > 0 || clutch.length > 0) && (
+                              <div className="mt-4 space-y-3">
+                                {consistent.length > 0 && (
+                                  <div className="bg-gradient-to-r from-green-800/40 to-emerald-800/40 rounded-lg p-3 border border-green-500/30">
+                                    <div className="flex items-center gap-2 mb-2">
+                                      <div className="w-5 h-5 bg-green-500/20 rounded-full flex items-center justify-center">
+                                        <span className="text-green-400 text-sm">👍</span>
+                                      </div>
+                                      <div className="text-sm font-semibold text-green-300">
+                                        Jugadores Consistentes
+                                      </div>
+                                    </div>
+                                    <div className="flex flex-wrap gap-2">
+                                      {consistent.map((player, index) => (
+                                        <div key={index} className="px-3 py-1 bg-green-600/20 rounded-full border border-green-500/30">
+                                          <span className="text-sm text-green-200">{player.playerName}</span>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  </div>
+                                )}
+                                
+                                {clutch.length > 0 && (
+                                  <div className="bg-gradient-to-r from-blue-800/40 to-cyan-800/40 rounded-lg p-3 border border-blue-500/30">
+                                    <div className="flex items-center gap-2 mb-2">
+                                      <div className="w-5 h-5 bg-blue-500/20 rounded-full flex items-center justify-center">
+                                        <span className="text-blue-400 text-sm">🔥</span>
+                                      </div>
+                                      <div className="text-sm font-semibold text-blue-300">
+                                        Jugadores Clutch
+                                      </div>
+                                    </div>
+                                    <div className="flex flex-wrap gap-2">
+                                      {clutch.map((player, index) => (
+                                        <div key={index} className="px-3 py-1 bg-blue-600/20 rounded-full border border-blue-500/30">
+                                          <span className="text-sm text-blue-200">{player.playerName}</span>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  </div>
+                                )}
                               </div>
                             );
                           })()}
@@ -2699,12 +2779,39 @@ export default function DotaMatchesFixed() {
                         const poorPerformers = performances.filter(p => p.score < 30);
                         
                         return poorPerformers.length > 0 && (
-                          <div className="mt-2 p-2 bg-red-900/30 rounded border border-red-500/30">
-                            <div className="text-xs text-red-300 font-medium mb-1">
-                              ⚠️ Jugadores con bajo rendimiento:
+                          <div className="mt-4 p-4 bg-gradient-to-r from-red-800/40 to-pink-800/40 rounded-xl border border-red-500/40 shadow-lg">
+                            <div className="flex items-center gap-2 mb-3">
+                              <div className="w-6 h-6 bg-red-500/20 rounded-full flex items-center justify-center">
+                                <span className="text-red-400 text-sm">⚠️</span>
+                              </div>
+                              <div className="text-base font-semibold text-red-300">
+                                Jugadores con Bajo Rendimiento
+                              </div>
                             </div>
-                            <div className="text-xs text-red-200">
-                              {poorPerformers.map(p => p.playerName).join(', ')}
+                            <div className="grid grid-cols-1 gap-2">
+                              {poorPerformers.map((player, index) => (
+                                <div key={index} className="flex items-center justify-between bg-red-700/30 rounded-lg p-3 border border-red-500/30">
+                                  <div className="flex items-center gap-3">
+                                    <div className="text-2xl">{player.icon}</div>
+                                    <div>
+                                      <div className="text-sm font-medium text-white">
+                                        {player.playerName}
+                                      </div>
+                                      <div className="text-xs text-red-200">
+                                        {player.team} • KDA: {player.kda}
+                                      </div>
+                                    </div>
+                                  </div>
+                                  <div className="text-right">
+                                    <div className={`text-sm font-bold ${player.color}`}>
+                                      {player.score}/100
+                                    </div>
+                                    <div className="text-xs text-gray-400">
+                                      {player.category}
+                                    </div>
+                                  </div>
+                                </div>
+                              ))}
                             </div>
                           </div>
                         );
@@ -3835,3 +3942,4 @@ export default function DotaMatchesFixed() {
     </div>
   );
 }
+
